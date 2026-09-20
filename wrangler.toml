@@ -1,0 +1,21 @@
+name = "signsure"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[vars]
+# Current stable Gemini Flash model (verified 2026-09-20 against ai.google.dev/gemini-api/docs/models).
+GEMINI_MODEL = "gemini-3.8-flash"
+MOCK_GEMINI = "false"
+ALLOWED_ORIGIN = "https://signsure.pages.dev"
+
+# Secrets are NEVER in this file. Set them with:
+#   npx wrangler pages secret put GEMINI_API_KEY --project-name signsure
+#   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name signsure
+#   npx wrangler pages secret put SESSION_SECRET --project-name signsure
+#   npx wrangler pages secret put IP_HASH_SALT --project-name signsure
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+# Replace with the id printed by: npx wrangler kv namespace create RATE_LIMIT_KV
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

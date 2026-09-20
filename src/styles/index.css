@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+/*
+ * Colour is always paired with an icon and a word in the UI, so these tokens carry meaning
+ * for sighted users only as reinforcement. Every pair below is >= 4.5:1 against its surface
+ * in both schemes (see docs/ACCESSIBILITY.md section 4).
+ */
+:root {
+  color-scheme: light dark;
+
+  --ss-surface: #ffffff;
+  --ss-surface-raised: #f6f8fa;
+  --ss-surface-sunken: #eef1f4;
+  --ss-ink: #1b1f24;
+  --ss-muted: #4c555f;
+  --ss-border: #d3d9df;
+  --ss-border-strong: #9aa4ae;
+  --ss-primary: #1f4ed8;
+  --ss-primary-ink: #ffffff;
+  --ss-primary-soft: #eaf0ff;
+  --ss-high: #b42318;
+  --ss-high-soft: #fdeceb;
+  --ss-medium: #8a4a00;
+  --ss-medium-soft: #fdf1e3;
+  --ss-low: #05603a;
+  --ss-low-soft: #e7f5ee;
+  --ss-info: #29486b;
+  --ss-info-soft: #eaf1f9;
+  --ss-focus: #0b57d0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ss-surface: #12161b;
+    --ss-surface-raised: #1b2128;
+    --ss-surface-sunken: #0c1014;
+    --ss-ink: #eef2f6;
+    --ss-muted: #b3bdc7;
+    --ss-border: #333c46;
+    --ss-border-strong: #5b6672;
+    --ss-primary: #94b4ff;
+    --ss-primary-ink: #0b1220;
+    --ss-primary-soft: #1a2436;
+    --ss-high: #ff9a91;
+    --ss-high-soft: #2e1614;
+    --ss-medium: #f0b674;
+    --ss-medium-soft: #2b1d0c;
+    --ss-low: #6ad3a1;
+    --ss-low-soft: #0e2418;
+    --ss-info: #a9c6ea;
+    --ss-info-soft: #14202e;
+    --ss-focus: #9dc0ff;
+  }
+}
+
+@theme inline {
+  --color-surface: var(--ss-surface);
+  --color-raised: var(--ss-surface-raised);
+  --color-sunken: var(--ss-surface-sunken);
+  --color-ink: var(--ss-ink);
+  --color-muted: var(--ss-muted);
+  --color-line: var(--ss-border);
+  --color-line-strong: var(--ss-border-strong);
+  --color-primary: var(--ss-primary);
+  --color-primary-ink: var(--ss-primary-ink);
+  --color-primary-soft: var(--ss-primary-soft);
+  --color-high: var(--ss-high);
+  --color-high-soft: var(--ss-high-soft);
+  --color-medium: var(--ss-medium);
+  --color-medium-soft: var(--ss-medium-soft);
+  --color-low: var(--ss-low);
+  --color-low-soft: var(--ss-low-soft);
+  --color-info: var(--ss-info);
+  --color-info-soft: var(--ss-info-soft);
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', Arial,
+    sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--ss-surface);
+    color: var(--ss-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  /* 2.4.11 Focus Not Obscured: sticky header must not hide the focused element. */
+  :target,
+  [id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--ss-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  mark {
+    background-color: #fff3a3;
+    color: #1b1f24;
+    padding: 0 0.1em;
+    border-radius: 2px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    mark {
+      background-color: #6b5a00;
+      color: #fffbe6;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility prose-measure {
+  max-width: 70ch;
+}
+
+/* Minimum target size (WCAG 2.2 AA is 24px; we aim for the 44px AAA-level target). */
+@utility tap-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

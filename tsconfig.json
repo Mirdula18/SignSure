@@ -1,0 +1,5 @@
+{
+  "files": [],
+  "comment": "Solution file. Each area has its own lib/types because the browser (DOM), Cloudflare Workers, and Node tooling expose different globals. npm run typecheck checks all three.",
+  "include": []
+}

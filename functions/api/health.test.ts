@@ -14,7 +14,7 @@ async function call(env: Env): Promise<{ status: number; body: HealthBody; heade
   )({ env });
   return {
     status: response.status,
-    body: (await response.json()),
+    body: await response.json(),
     headers: response.headers,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { required } from './arrays';
+import { required, requiredEntry } from './arrays';
 
 describe('required', () => {
   it('returns the element at an in-range index', () => {
@@ -22,5 +22,27 @@ describe('required', () => {
 
   it('throws on an empty collection', () => {
     expect(() => required([], 0)).toThrow(RangeError);
+  });
+});
+
+describe('requiredEntry', () => {
+  const durations = new Map([
+    ['ninety', 90],
+    ['sixty', 60],
+  ]);
+
+  it('returns the value for a key that is present', () => {
+    expect(requiredEntry(durations, 'ninety')).toBe(90);
+  });
+
+  it('throws rather than defaulting when a key has drifted out of the map', () => {
+    expect(() => requiredEntry(durations, 'eighty')).toThrow(RangeError);
+    expect(() => requiredEntry(durations, 'eighty')).toThrow(
+      'Key eighty is missing from a map of 2 entries',
+    );
+  });
+
+  it('throws on an empty map', () => {
+    expect(() => requiredEntry(new Map<string, number>(), 'anything')).toThrow(RangeError);
   });
 });

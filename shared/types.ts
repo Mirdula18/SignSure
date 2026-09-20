@@ -6,25 +6,11 @@
  * originates here or in `shared/rules`, never in model output.
  */
 
-export type ClauseCategory =
-  | 'NOTICE_PERIOD'
-  | 'BOND_OR_EXIT_PENALTY'
-  | 'NON_COMPETE'
-  | 'NON_SOLICIT'
-  | 'CONFIDENTIALITY'
-  | 'IP_ASSIGNMENT'
-  | 'COMPENSATION'
-  | 'PROBATION'
-  | 'TERMINATION'
-  | 'WORKING_HOURS_LEAVE'
-  | 'BENEFITS'
-  | 'MOONLIGHTING'
-  | 'DISPUTE_RESOLUTION'
-  | 'DOCUMENT_RETENTION'
-  | 'GENERAL'
-  | 'OTHER';
-
-export const CLAUSE_CATEGORIES: readonly ClauseCategory[] = [
+/**
+ * Clause categories. The array is the source of truth so the union, the Zod enum and the
+ * response schema sent to Gemini can never drift apart.
+ */
+export const CLAUSE_CATEGORIES = [
   'NOTICE_PERIOD',
   'BOND_OR_EXIT_PENALTY',
   'NON_COMPETE',
@@ -43,9 +29,11 @@ export const CLAUSE_CATEGORIES: readonly ClauseCategory[] = [
   'OTHER',
 ] as const;
 
-export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+export type ClauseCategory = (typeof CLAUSE_CATEGORIES)[number];
 
-export const RISK_LEVELS: readonly RiskLevel[] = ['HIGH', 'MEDIUM', 'LOW', 'INFO'] as const;
+export const RISK_LEVELS = ['HIGH', 'MEDIUM', 'LOW', 'INFO'] as const;
+
+export type RiskLevel = (typeof RISK_LEVELS)[number];
 
 /** Sort weight: higher is shown first. */
 export const RISK_ORDER: Readonly<Record<RiskLevel, number>> = {

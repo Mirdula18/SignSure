@@ -13,3 +13,18 @@ export function required<T>(items: ArrayLike<T>, index: number): T {
   }
   return value;
 }
+
+/**
+ * Map lookup for keys the caller knows are present.
+ *
+ * Used where a regular expression's alternation was generated from the map's own keys, so a
+ * miss would mean the two had silently drifted apart - which should crash, not quietly return
+ * a default that skews a bond amount or a notice period.
+ */
+export function requiredEntry<K, V>(entries: ReadonlyMap<K, V>, key: K): V {
+  const value = entries.get(key);
+  if (value === undefined) {
+    throw new RangeError(`Key ${String(key)} is missing from a map of ${entries.size} entries`);
+  }
+  return value;
+}

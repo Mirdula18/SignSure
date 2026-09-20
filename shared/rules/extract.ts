@@ -1,3 +1,5 @@
+import { required, requiredEntry } from '../arrays';
+
 /**
  * Deterministic extraction of the facts the rule library reasons about: how long a notice
  * period is, how big a bond is, and which side of the contract each one binds.
@@ -87,10 +89,13 @@ function toUnit(raw: string): DurationUnit {
 export function extractDurations(normalizedText: string): Duration[] {
   const durations: Duration[] = [];
   for (const match of normalizedText.matchAll(DURATION_PATTERN)) {
-    const [text, word, digits, rawUnit] = match;
-    const value = word !== undefined ? (NUMBER_WORDS.get(word) ?? 0) : Number(digits);
-    if (!Number.isFinite(value) || value <= 0 || rawUnit === undefined) continue;
-    const unit = toUnit(rawUnit);
+    // Groups 0 and 3 always participate in a match; 1 and 2 are the two halves of one
+    // alternation, so exactly one of them is present.
+    const text = required(match, 0);
+    const unit = toUnit(required(match, 3));
+    const word = match[1];
+    const value = word === undefined ? Number(match[2]) : requiredEntry(NUMBER_WORDS, word);
+    if (value <= 0) continue;
     durations.push({
       days: value * DAYS_PER_UNIT[unit],
       value,
@@ -135,17 +140,20 @@ const CURRENCY_PREFIX = /(rs\.?|inr|₹)\s*$/;
 export function extractAmounts(normalizedText: string): Amount[] {
   const amounts: Amount[] = [];
   for (const match of normalizedText.matchAll(AMOUNT_PATTERN)) {
-    const [text, rawDigits, multiplierWord] = match;
-    if (rawDigits === undefined) continue;
+    // The digit group is mandatory, so groups 0 and 1 always participate in a match.
+    const text = required(match, 0);
+    const rawDigits = required(match, 1);
+    const multiplierWord = match[2];
 
     const before = normalizedText.slice(0, match.index);
     const hasCurrency = CURRENCY_PREFIX.test(before) || /^(?:rs|inr|₹)/.test(text);
     if (!hasCurrency && multiplierWord === undefined) continue;
 
     const base = Number(rawDigits.replaceAll(',', ''));
-    if (!Number.isFinite(base) || base <= 0) continue;
+    if (base <= 0) continue;
 
-    const multiplier = multiplierWord === undefined ? 1 : (MULTIPLIERS.get(multiplierWord) ?? 1);
+    const multiplier =
+      multiplierWord === undefined ? 1 : requiredEntry(MULTIPLIERS, multiplierWord);
     amounts.push({
       rupees: base * multiplier,
       text: text.trim(),

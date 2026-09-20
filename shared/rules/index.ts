@@ -2,10 +2,10 @@ import { normalize } from '../normalize';
 import type { Clause, ClauseCategory, MissingInfoHit, RuleHit } from '../types';
 import { RISK_ORDER } from '../types';
 import { appliesToCategory, EMPLOYMENT_RULES, MISSING_INFO_RULES } from './employment';
-import type { Rule, RuleContext } from './types';
+import type { Rule, RuleContext, RuleVerdict } from './types';
 
 export { EMPLOYMENT_RULES, MISSING_INFO_RULES } from './employment';
-export type { MissingInfoRule, Rule, RuleContext } from './types';
+export type { MissingInfoRule, Rule, RuleContext, RuleVerdict } from './types';
 export { extractAmounts, extractDurations, extractNoticePeriods, formatRupees } from './extract';
 export type { Amount, Duration, NoticePeriods } from './extract';
 
@@ -36,26 +36,26 @@ export function runRules(
 
     for (const rule of EMPLOYMENT_RULES) {
       if (!appliesToCategory(rule, context.category)) continue;
-      if (!rule.test(context)) continue;
-      hits.push(toHit(rule, context));
+      const verdict = rule.evaluate(context);
+      if (verdict === null) continue;
+      hits.push(toHit(rule, context, verdict));
     }
   }
 
   return sortHits(hits);
 }
 
-function toHit(rule: Rule, context: RuleContext): RuleHit {
-  const details = rule.details?.(context);
+function toHit(rule: Rule, context: RuleContext, verdict: RuleVerdict): RuleHit {
   return {
     ruleId: rule.id,
     clauseId: context.clause.id,
-    severity: rule.severity(context),
+    severity: verdict.severity,
     title: rule.title,
     message: rule.message,
     basis: rule.basis,
     questions: [...rule.questions],
     lastReviewed: rule.lastReviewed,
-    ...(details ? { details } : {}),
+    ...(verdict.details ? { details: verdict.details } : {}),
   };
 }
 

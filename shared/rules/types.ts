@@ -20,6 +20,14 @@ export interface RuleContext {
   allClauses: readonly Clause[];
 }
 
+/** What a rule produces when it fires. */
+export interface RuleVerdict {
+  /** Severity may depend on the clause: a bond with a stated amount is more serious. */
+  severity: RiskLevel;
+  /** Values worth showing beside the card, e.g. an extracted bond amount. */
+  details?: Record<string, string>;
+}
+
 export interface Rule {
   id: string;
   /**
@@ -27,18 +35,23 @@ export interface Rule {
    * key off wording alone and must still fire when the model mis-classifies a clause.
    */
   appliesTo: readonly ClauseCategory[];
-  /** Whether the rule fires for this clause. Pure and synchronous: no network, no clock. */
-  test: (context: RuleContext) => boolean;
-  /** Severity may depend on the clause, e.g. a bond with a stated amount is more serious. */
-  severity: (context: RuleContext) => RiskLevel;
+  /**
+   * Decides whether the rule fires and, if so, how serious it is and what to show.
+   *
+   * One function rather than separate `test` / `severity` / `details` callbacks: those three
+   * had to re-derive the same facts from the clause and then re-assert invariants the first
+   * one had already proved, which meant guards no input could ever reach. Returning `null`
+   * for "does not apply" keeps every branch here reachable and the work done once.
+   *
+   * Pure and synchronous: no network, no clock, no randomness.
+   */
+  evaluate: (context: RuleContext) => RuleVerdict | null;
   title: string;
   message: string;
   basis: string;
   questions: readonly string[];
   /** ISO date the message and basis were last checked against a primary source. */
   lastReviewed: string;
-  /** Optional extraction of values worth showing, e.g. a bond amount. */
-  details?: (context: RuleContext) => Record<string, string> | undefined;
 }
 
 /** Document-level gap: something a fair offer letter should state and this one does not. */

@@ -435,6 +435,30 @@ describe('compareRequestSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('counts the character budget across both documents, not once per side', () => {
+    // Each side is individually legal; together they exceed the intended payload. One clause
+    // cannot hold half the budget, so the bulk is spread over several maximum-length clauses.
+    const full = 'x'.repeat(LIMITS.maxClauseChars);
+    const perSide = Math.floor(LIMITS.maxTotalChars / LIMITS.maxClauseChars / 2) + 1;
+    const bulky = () =>
+      Array.from({ length: perSide }, (_, index) =>
+        clause({ id: `c${String(index + 1).padStart(3, '0')}`, order: index, text: full }),
+      );
+
+    expect(clauseListSchema.safeParse(bulky()).success).toBe(true);
+
+    const result = compareRequestSchema.safeParse({
+      clausesA: bulky(),
+      clausesB: bulky(),
+      language: 'en',
+      readingLevel: 'standard',
+    });
+    expect(result.success).toBe(false);
+    expect(messagesOf(result)).toContain(
+      `Both documents together are ${perSide * 2 * LIMITS.maxClauseChars} characters; the limit is ${LIMITS.maxTotalChars}`,
+    );
+  });
 });
 
 describe('prepareRequestSchema', () => {

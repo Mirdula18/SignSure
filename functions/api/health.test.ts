@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { onRequestGet } from './health';
 import type { Env } from '../lib/env';
 
-type HealthBody = {
+interface HealthBody {
   ok: boolean;
   mode: string;
   configured: Record<string, boolean>;
-};
+}
 
 async function call(env: Env): Promise<{ status: number; body: HealthBody; headers: Headers }> {
   const response = await (
@@ -14,7 +14,7 @@ async function call(env: Env): Promise<{ status: number; body: HealthBody; heade
   )({ env });
   return {
     status: response.status,
-    body: (await response.json()) as HealthBody,
+    body: (await response.json()),
     headers: response.headers,
   };
 }

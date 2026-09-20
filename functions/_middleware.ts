@@ -16,6 +16,9 @@ import { LIMITS } from '../shared/limits';
  */
 
 const SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  // `public/_headers` covers static assets; an /api/* response is served by this Function and
+  // would otherwise be the one path on the site that never carries HSTS.
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -57,12 +60,16 @@ function withSecurityHeaders(response: Response): Response {
   });
 }
 
-/** Declared body size, when the client states one. Chunked uploads are caught by the route. */
+/**
+ * Declared body size, when the client states one. Chunked uploads are caught by the route.
+ *
+ * Only a bare digit string counts, which is all RFC 9110 permits. `Number.parseInt` on its own
+ * would read "1e9" as 1 and "-1" as -1, both of which would sail past the cap.
+ */
 function declaredBodyBytes(request: Request): number | null {
   const header = request.headers.get('content-length');
-  if (header === null) return null;
-  const value = Number.parseInt(header, 10);
-  return Number.isFinite(value) ? value : null;
+  if (header === null || !/^\d+$/.test(header.trim())) return null;
+  return Number.parseInt(header.trim(), 10);
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {

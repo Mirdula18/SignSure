@@ -18,7 +18,9 @@ const JSON_HEADERS: Readonly<Record<string, string>> = {
 export function json(body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...JSON_HEADERS, ...Object.fromEntries(new Headers(extraHeaders).entries()) },
+    // `JSON_HEADERS` is spread last on purpose: a caller passing its own `cache-control` must
+    // not be able to defeat `no-store` on a response derived from someone's contract.
+    headers: { ...Object.fromEntries(new Headers(extraHeaders).entries()), ...JSON_HEADERS },
   });
 }
 

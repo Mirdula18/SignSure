@@ -5,7 +5,7 @@ import { axe } from 'vitest-axe';
 import { LIMITS } from '@shared/limits';
 import type { AskResult } from '@shared/types';
 import { AskPanel } from './AskPanel';
-import { clause, renderWithProviders } from '@/test/factories';
+import { byTextContent, clause, renderWithProviders } from '@/test/factories';
 import type { QaEntry } from '@/state/appState';
 
 const CLAUSES = [clause()];
@@ -85,7 +85,7 @@ describe('AskPanel', () => {
 
   it('announces answers in a polite live region rather than moving focus', () => {
     renderPanel([entry()]);
-    const answer = screen.getByText('Your notice period is ninety days.');
+    const answer = screen.getByText(byTextContent('Your notice period is ninety days.'));
     expect(answer.closest('[aria-live="polite"]')).not.toBeNull();
   });
 

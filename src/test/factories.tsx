@@ -84,6 +84,7 @@ export function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResul
       },
     ],
     stats: { verified: 1, fuzzy: 0, unverified: 0 },
+    partial: false,
     ...overrides,
   };
 }
@@ -118,4 +119,25 @@ export function renderWithProviders(ui: ReactElement, state: Partial<AppState> =
 /** Renders with only the preferences provider, for components that do not touch app state. */
 export function renderWithPreferences(ui: ReactElement): RenderResult {
   return render(ui, { wrapper: PreferencesProvider });
+}
+
+/** Text a reader actually sees: `textContent` minus anything inside a `hidden` element. */
+function visibleText(node: Node): string {
+  if (node instanceof HTMLElement && node.hidden) return '';
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  return [...node.childNodes].map(visibleText).join('');
+}
+
+/**
+ * Matches an element by the text a reader sees in it.
+ *
+ * Needed wherever GlossaryText is used: "Your notice period is ninety days." renders as text, a
+ * button for "notice period", a hidden definition and more text, so a plain getByText cannot see
+ * the sentence. This finds the innermost element whose visible text is the sentence.
+ */
+export function byTextContent(expected: string) {
+  return (_content: string, element: Element | null): boolean => {
+    if (element === null || visibleText(element) !== expected) return false;
+    return ![...element.children].some((child) => visibleText(child) === expected);
+  };
 }

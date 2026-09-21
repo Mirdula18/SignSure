@@ -5,7 +5,13 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import type { AskResult, CompareResult, PrepareResult } from '@shared/types';
 import { ReportScreen } from './ReportScreen';
-import { analysis, clause, parsedDocument, renderWithProviders } from '@/test/factories';
+import {
+  analysis,
+  byTextContent,
+  clause,
+  parsedDocument,
+  renderWithProviders,
+} from '@/test/factories';
 import type { AppState } from '@/state/appState';
 
 /**
@@ -177,7 +183,9 @@ describe('ReportScreen: asking', () => {
     await user.type(screen.getByLabelText(/your question/i), 'What is my notice period?');
     await user.click(screen.getByRole('button', { name: /^ask$/i }));
 
-    expect(await screen.findByText('Your notice period is ninety days.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(byTextContent('Your notice period is ninety days.')),
+    ).toBeInTheDocument();
     expect(api.askQuestion).toHaveBeenCalledWith(
       'token-1',
       expect.objectContaining({ question: 'What is my notice period?', history: [] }),
@@ -192,7 +200,7 @@ describe('ReportScreen: asking', () => {
     await user.click(screen.getByRole('tab', { name: /^ask$/i }));
     await user.type(screen.getByLabelText(/your question/i), 'First question here');
     await user.click(screen.getByRole('button', { name: /^ask$/i }));
-    await screen.findByText('Your notice period is ninety days.');
+    await screen.findByText(byTextContent('Your notice period is ninety days.'));
 
     await user.type(screen.getByLabelText(/your question/i), 'And a follow-up');
     await user.click(screen.getByRole('button', { name: /^ask$/i }));

@@ -66,10 +66,15 @@ function preamble({ language, readingLevel }: PromptContext): string {
  * text here would make honest quotes fail verification.
  */
 export function sanitiseForPrompt(text: string): string {
-  return text
-    .replace(/<\/?document>/gi, '[tag]')
-    .replace(/\[\[/g, '[ [')
-    .replace(/\]\]/g, '] ]');
+  return (
+    text
+      // Any spelling of the fence tag, including `</ document >` with stray whitespace.
+      .replace(/<\s*\/?\s*document\s*>/gi, '[tag]')
+      // Break every adjacent pair, not just the first: replacing "[[" once turns "[[[" into
+      // "[ [[", which still contains a marker opening.
+      .replace(/\[(?=\[)/g, '[ ')
+      .replace(/\](?=\])/g, '] ')
+  );
 }
 
 /**
@@ -218,7 +223,10 @@ export interface PreparePromptInput {
 export function prepareUserPrompt(input: PreparePromptInput): string {
   const findings = input.findings
     .map(
-      (finding) => `- ${finding.clauseId} [${finding.risk}/${finding.category}] ${finding.title}`,
+      // Titles originate with the model and travel back through the browser, so they are
+      // untrusted by the time they arrive here and are sanitised like everything else.
+      (finding) =>
+        `- ${finding.clauseId} [${finding.risk}/${finding.category}] ${sanitiseForPrompt(finding.title)}`,
     )
     .join('\n');
 

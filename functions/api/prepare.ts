@@ -24,7 +24,12 @@ const MAX_OUTPUT_TOKENS = 2048;
 /** A sheet longer than this stops being something a person actually uses in a meeting. */
 const MAX_REVIEWED_QUESTIONS = 12;
 
-/** Case- and punctuation-insensitive de-duplication, so near-identical questions collapse. */
+/**
+ * Case- and punctuation-insensitive de-duplication, so near-identical questions collapse.
+ *
+ * The key keeps every letter and digit in any script. An ASCII-only key reduced every Hindi
+ * question to an empty string, so a Hindi prep sheet collapsed to one question per section.
+ */
 function dedupe(items: readonly string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -33,7 +38,7 @@ function dedupe(items: readonly string[]): string[] {
     if (trimmed.length === 0) continue;
     const key = trimmed
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
       .trim();
     if (seen.has(key)) continue;
     seen.add(key);

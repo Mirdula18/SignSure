@@ -1,7 +1,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { CLAUSE_CATEGORIES, RISK_LEVELS, type Clause, type ClauseCategory } from '@shared/types';
+import {
+  CLAUSE_CATEGORIES,
+  RISK_LEVELS,
+  type AskStatus,
+  type Clause,
+  type ClauseCategory,
+} from '@shared/types';
 import { linesFromText, segment } from '@/features/parsing/segmenter';
 
 /**
@@ -112,6 +118,6 @@ export function expectedCategories(contract: GoldenContract): Record<string, Cla
 }
 
 /** Normalises a question's `expect` to a list of acceptable statuses. */
-export function acceptableStatuses(question: GoldenQuestion): readonly string[] {
+export function acceptableStatuses(question: GoldenQuestion): readonly AskStatus[] {
   return typeof question.expect === 'string' ? [question.expect] : question.expect;
 }

@@ -23,7 +23,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "eval": "tsx scripts/eval.ts",
+    "eval": "tsx --tsconfig tsconfig.node.json scripts/eval.ts",
     "size": "node scripts/bundle-size.mjs",
     "secretscan": "node scripts/secret-scan.mjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name signsure",

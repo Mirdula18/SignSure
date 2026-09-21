@@ -60,7 +60,7 @@ export function CompareTab({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-lg font-semibold text-ink">{t('compare.heading')}</h3>
+        <h2 className="text-lg font-semibold text-ink">{t('compare.heading')}</h2>
         <p className="prose-measure mt-1 text-sm text-muted">{t('compare.intro')}</p>
       </div>
 

@@ -58,7 +58,7 @@ export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-lg font-semibold text-ink">{t('ask.heading')}</h3>
+        <h2 className="text-lg font-semibold text-ink">{t('ask.heading')}</h2>
         <p className="prose-measure mt-1 text-sm text-muted">{t('ask.intro')}</p>
       </div>
 
@@ -95,9 +95,9 @@ export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) 
       </form>
 
       <section aria-labelledby="ask-suggestions">
-        <h4 id="ask-suggestions" className="text-sm font-medium text-ink">
+        <h3 id="ask-suggestions" className="text-sm font-medium text-ink">
           {t('ask.suggested')}
-        </h4>
+        </h3>
         <ul className="mt-2 flex flex-wrap gap-2">
           {suggestions.map((key) => (
             <li key={key}>
@@ -114,9 +114,9 @@ export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) 
       </section>
 
       <section aria-labelledby="ask-answers">
-        <h4 id="ask-answers" className="sr-only">
+        <h3 id="ask-answers" className="sr-only">
           {t('ask.answerRegion')}
-        </h4>
+        </h3>
         <div aria-live="polite" className="flex flex-col gap-4">
           {state.qa.length === 0 ? (
             <p className="text-sm text-muted">{t('ask.empty')}</p>
@@ -148,7 +148,7 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
 
   return (
     <article className="rounded-xl border border-line bg-surface p-4">
-      <h5 className="text-sm font-semibold text-ink">{entry.question}</h5>
+      <h4 className="text-sm font-semibold text-ink">{entry.question}</h4>
 
       {entry.status === 'loading' ? (
         <p className="mt-2 text-sm text-muted">{t('ask.sending')}</p>
@@ -174,9 +174,9 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
 
           {entry.result.citations.length === 0 ? null : (
             <div className="mt-3">
-              <h6 className="text-xs font-semibold tracking-wide text-muted uppercase">
+              <h5 className="text-xs font-semibold tracking-wide text-muted uppercase">
                 {t('ask.citations')}
-              </h6>
+              </h5>
               <ul className="mt-2 flex flex-col gap-2">
                 {entry.result.citations.map((citation) => {
                   const clause = byId.get(citation.clauseId);
@@ -208,9 +208,9 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
 
           {entry.result.missingInfo.length === 0 ? null : (
             <div className="mt-3">
-              <h6 className="text-xs font-semibold tracking-wide text-muted uppercase">
+              <h5 className="text-xs font-semibold tracking-wide text-muted uppercase">
                 {t('ask.missingInfo')}
-              </h6>
+              </h5>
               <ul className="mt-1 list-disc ps-5 text-sm text-ink">
                 {entry.result.missingInfo.map((item) => (
                   <li key={item}>{item}</li>
@@ -221,9 +221,9 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
 
           {entry.result.suggestedQuestions.length === 0 ? null : (
             <div className="mt-3">
-              <h6 className="text-xs font-semibold tracking-wide text-muted uppercase">
+              <h5 className="text-xs font-semibold tracking-wide text-muted uppercase">
                 {t('ask.suggestedNext')}
-              </h6>
+              </h5>
               <ul className="mt-1 list-disc ps-5 text-sm text-ink">
                 {entry.result.suggestedQuestions.map((item) => (
                   <li key={item}>{item}</li>

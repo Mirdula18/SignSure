@@ -51,9 +51,9 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
   return (
     <div className="flex flex-col gap-10">
       <section aria-labelledby="overview-summary">
-        <h3 id="overview-summary" className="text-lg font-semibold text-ink">
+        <h2 id="overview-summary" className="text-lg font-semibold text-ink">
           {t('overview.summaryHeading')}
-        </h3>
+        </h2>
         <p className="prose-measure mt-1 text-sm text-muted">{analysis.documentSummary.overview}</p>
 
         <dl className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
@@ -79,9 +79,9 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
       </section>
 
       <section aria-labelledby="overview-flags">
-        <h3 id="overview-flags" className="text-lg font-semibold text-ink">
+        <h2 id="overview-flags" className="text-lg font-semibold text-ink">
           {t('overview.redFlagsHeading')}
-        </h3>
+        </h2>
         {redFlags.length === 0 ? (
           <p className="prose-measure mt-2 text-sm text-muted">{t('overview.noRedFlags')}</p>
         ) : (
@@ -101,9 +101,9 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
 
       {analysis.ruleHits.length === 0 ? null : (
         <section aria-labelledby="overview-rules">
-          <h3 id="overview-rules" className="text-lg font-semibold text-ink">
+          <h2 id="overview-rules" className="text-lg font-semibold text-ink">
             {t('overview.rulesHeading')}
-          </h3>
+          </h2>
           <ol className="mt-3 flex list-none flex-col gap-4 p-0">
             {analysis.ruleHits.map((hit) => (
               <li key={`${hit.ruleId}-${hit.clauseId}`}>
@@ -116,9 +116,9 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
 
       {analysis.missingInfo.length === 0 ? null : (
         <section aria-labelledby="overview-missing">
-          <h3 id="overview-missing" className="text-lg font-semibold text-ink">
+          <h2 id="overview-missing" className="text-lg font-semibold text-ink">
             {t('overview.missingHeading')}
-          </h3>
+          </h2>
           <p className="prose-measure mt-1 text-sm text-muted">{t('overview.missingIntro')}</p>
           <ul className="mt-3 flex flex-col gap-2">
             {analysis.missingInfo.map((item) => (
@@ -133,9 +133,9 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
 
       {unverifiedFindings.length === 0 ? null : (
         <section aria-labelledby="overview-unverified">
-          <h3 id="overview-unverified" className="text-lg font-semibold text-ink">
+          <h2 id="overview-unverified" className="text-lg font-semibold text-ink">
             {t('overview.unverifiedHeading')}
-          </h3>
+          </h2>
           <p className="prose-measure mt-1 text-sm text-muted">{t('overview.unverifiedIntro')}</p>
           {/*
             Set apart with a dashed rule rather than reduced opacity. Opacity is the obvious way

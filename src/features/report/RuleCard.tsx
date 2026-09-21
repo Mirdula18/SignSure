@@ -18,7 +18,7 @@ export function RuleCard({ hit }: { hit: RuleHit }) {
     <article className="rounded-xl border border-line bg-surface p-4">
       <header className="flex flex-wrap items-center gap-2">
         <RiskBadge risk={hit.severity} />
-        <h4 className="text-base font-semibold text-ink">{hit.title}</h4>
+        <h3 className="text-base font-semibold text-ink">{hit.title}</h3>
       </header>
 
       <p className="prose-measure mt-2 text-sm leading-relaxed text-ink">{hit.message}</p>
@@ -36,9 +36,9 @@ export function RuleCard({ hit }: { hit: RuleHit }) {
 
       {hit.questions.length === 0 ? null : (
         <div className="mt-3">
-          <h5 className="text-xs font-semibold tracking-wide text-muted uppercase">
+          <h4 className="text-xs font-semibold tracking-wide text-muted uppercase">
             {t('rule.questions')}
-          </h5>
+          </h4>
           <ul className="mt-1 list-disc ps-5 text-sm text-ink">
             {hit.questions.map((question) => (
               <li key={question}>{question}</li>

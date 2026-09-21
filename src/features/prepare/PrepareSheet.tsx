@@ -98,7 +98,7 @@ export function PrepareSheet({ sheet, documentName, flagged }: PrepareSheetProps
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-lg font-semibold text-ink">{t('prepare.heading')}</h3>
+        <h2 className="text-lg font-semibold text-ink">{t('prepare.heading')}</h2>
         <p className="prose-measure mt-1 text-sm text-muted">{t('prepare.intro')}</p>
       </div>
 
@@ -123,9 +123,9 @@ export function PrepareSheet({ sheet, documentName, flagged }: PrepareSheetProps
         if (items.length === 0) return null;
         return (
           <section key={key} aria-labelledby={`prepare-${key}`}>
-            <h4 id={`prepare-${key}`} className="text-base font-semibold text-ink">
+            <h3 id={`prepare-${key}`} className="text-base font-semibold text-ink">
               {t(headingKey)}
-            </h4>
+            </h3>
             <ul className="mt-2 flex flex-col gap-2">
               {items.map((item) => (
                 <li key={item}>

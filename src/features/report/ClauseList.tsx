@@ -65,7 +65,7 @@ export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListPro
 
   return (
     <div className="flex flex-col gap-6">
-      <h3 className="text-lg font-semibold text-ink">{t('clauses.heading')}</h3>
+      <h2 className="text-lg font-semibold text-ink">{t('clauses.heading')}</h2>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="flex flex-col gap-1">

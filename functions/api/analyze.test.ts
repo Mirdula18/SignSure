@@ -32,7 +32,7 @@ vi.mock('../lib/gemini', async (importOriginal) => {
   return { ...actual, createGeminiClient: vi.fn(actual.createGeminiClient) };
 });
 
-const SECRET = 'a-thirty-two-byte-test-secret-01';
+const SECRET = 'test only: a thirty-two byte key';
 const SALT = 'test-ip-hash-salt';
 const IP = '203.0.113.7';
 const ANALYZE_URL = 'https://signsure.pages.dev/api/analyze';

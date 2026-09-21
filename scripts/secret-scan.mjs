@@ -5,6 +5,9 @@
  * Why a script rather than a grep in CI: the same check has to be runnable locally before a
  * commit, on Windows as well as Linux, and it needs to allow the documented Cloudflare test
  * keys (which are public by design) without allowing real ones.
+ *
+ * Fake secrets in tests are written with spaces ("test only: a thirty-two byte key") so they are
+ * not credential-shaped and never match. Follow that convention instead of widening ALLOWED.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

@@ -11,6 +11,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: { alias },
   test: {
+    // One worker per core is the default, and each jsdom worker running axe under coverage
+    // needs several hundred megabytes. On an 8 GB machine twelve of them never finish starting
+    // and their files silently report 0% coverage. Four also matches a standard CI runner.
+    maxWorkers: 4,
     // Two environments: shared/ and functions/ must stay DOM-free, so they run in Node and
     // would fail loudly if they ever reached for `document`.
     projects: [
@@ -28,6 +32,10 @@ export default defineConfig({
         test: {
           name: 'browser',
           environment: 'jsdom',
+          // axe scans and userEvent typing in jsdom take one to three seconds each on their own,
+          // and the whole suite runs files in parallel. The 5s default then fails healthy tests
+          // on a busy machine; 20s still catches a genuinely hung test.
+          testTimeout: 20_000,
           setupFiles: ['./vitest.setup.ts'],
           include: ['src/**/*.test.{ts,tsx}'],
         },

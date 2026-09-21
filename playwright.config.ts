@@ -13,7 +13,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  ...(process.env.CI ? { workers: 2 } : {}),
+  // Each worker is a full Chromium, and axe on the report page is the heaviest thing it does.
+  // Left to the default (half the cores) on an 8 GB machine, scans start timing out.
+  workers: process.env.CI ? 2 : 3,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   timeout: 45_000,
   expect: { timeout: 10_000 },

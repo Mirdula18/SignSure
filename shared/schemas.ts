@@ -230,12 +230,17 @@ export type PrepareModelOutput = z.infer<typeof prepareModelOutputSchema>;
 
 export const verificationStatusSchema = z.enum(['verified', 'fuzzy', 'unverified']);
 
+/**
+ * `exactOptional` rather than `optional`: with `exactOptionalPropertyTypes` on, an offset is
+ * either absent or a number, never explicitly `undefined`. Plain `.optional()` would infer
+ * `start?: number | undefined`, which does not match the `VerifiedQuote` the UI consumes.
+ */
 export const verifiedQuoteSchema = z.object({
   clauseId: z.string(),
   quote: z.string(),
   status: verificationStatusSchema,
-  start: z.number().int().nonnegative().optional(),
-  end: z.number().int().nonnegative().optional(),
+  start: z.exactOptional(z.number().int().nonnegative()),
+  end: z.exactOptional(z.number().int().nonnegative()),
 });
 
 export const ruleHitSchema = z.object({
@@ -247,7 +252,7 @@ export const ruleHitSchema = z.object({
   basis: z.string(),
   questions: z.array(z.string()),
   lastReviewed: z.string(),
-  details: z.record(z.string(), z.string()).optional(),
+  details: z.exactOptional(z.record(z.string(), z.string())),
 });
 
 export const analyzeResponseSchema = z.object({

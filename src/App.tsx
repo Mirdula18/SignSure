@@ -1,21 +1,114 @@
+import { useCallback } from 'react';
 import { AppFooter } from '@/components/AppFooter';
 import { AppHeader } from '@/components/AppHeader';
 import { DisclaimerBanner } from '@/components/DisclaimerBanner';
 import { SkipLink } from '@/components/SkipLink';
+import { Button } from '@/components/Button';
+import { LensPicker } from '@/features/lenses/LensPicker';
+import { ReportScreen } from '@/features/report/ReportScreen';
+import { UploadScreen } from '@/features/upload/UploadScreen';
+import { useAppState } from '@/state/appState';
 import { useT } from '@/state/preferences';
 
+/**
+ * Three screens, chosen by a single `stage` in the reducer: add a document, say what you are
+ * worried about, read the report. There is no router, because there is no URL worth sharing -
+ * the whole point is that nothing about the document persists anywhere.
+ */
 export default function App() {
   const t = useT();
+  const { state, dispatch } = useAppState();
+
+  const onAnalyse = useCallback(
+    (lenses: Parameters<typeof dispatch>[0] extends never ? never : string[]) => {
+      dispatch({ type: 'lensesChosen', lenses: lenses as never });
+      dispatch({ type: 'analysisStarted' });
+    },
+    [dispatch],
+  );
+
   return (
     <>
       <SkipLink />
       <AppHeader />
       <DisclaimerBanner />
-      <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          {t('app.tagline')}
-        </h1>
+
+      <main
+        id="main"
+        tabIndex={-1}
+        className="mx-auto max-w-5xl px-4 py-8 focus-visible:outline-none"
+      >
+        {state.stage === 'upload' ? (
+          <>
+            <div className="mb-10">
+              <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                {t('home.heading')}
+              </h1>
+              <p className="prose-measure mt-3 text-base text-muted">{t('home.intro')}</p>
+
+              <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+                {(
+                  [
+                    ['home.trust1Title', 'home.trust1Body'],
+                    ['home.trust2Title', 'home.trust2Body'],
+                    ['home.trust3Title', 'home.trust3Body'],
+                  ] as const
+                ).map(([title, body]) => (
+                  <li key={title} className="rounded-xl border border-line bg-raised p-4">
+                    <h2 className="text-sm font-semibold text-ink">{t(title)}</h2>
+                    <p className="mt-1 text-sm text-muted">{t(body)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <UploadScreen />
+          </>
+        ) : null}
+
+        {state.stage === 'lenses' ? (
+          <>
+            <h1 className="sr-only">{t('lenses.heading')}</h1>
+            <p className="mb-6 text-sm text-muted">
+              {state.document?.pageCount === null || state.document === null
+                ? t('upload.parsedNoPages', { clauses: state.document?.clauses.length ?? 0 })
+                : t('upload.parsedPages', {
+                    clauses: state.document.clauses.length,
+                    pages: state.document.pageCount ?? 0,
+                  })}
+            </p>
+            <LensPicker
+              initial={state.lenses}
+              onSubmit={onAnalyse}
+              onBack={() => {
+                dispatch({ type: 'clearEverything' });
+              }}
+            />
+          </>
+        ) : null}
+
+        {state.stage === 'report' ? (
+          <>
+            <h1 className="sr-only">{t('report.heading')}</h1>
+            <ReportScreen />
+          </>
+        ) : null}
+
+        {state.stage !== 'upload' ? (
+          <p className="no-print mt-10 text-xs text-muted">
+            {t('app.startOverHint')}{' '}
+            <Button
+              variant="ghost"
+              className="px-1 underline"
+              onClick={() => {
+                dispatch({ type: 'clearEverything' });
+              }}
+            >
+              {t('app.startOver')}
+            </Button>
+          </p>
+        ) : null}
       </main>
+
       <AppFooter />
     </>
   );

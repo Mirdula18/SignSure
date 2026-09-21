@@ -28,11 +28,15 @@ describe('AppHeader', () => {
     expect(screen.getByRole('radio', { name: 'Simple' })).toBeChecked();
   });
 
-  it('switches language', async () => {
+  it('switches language, and relabels itself in the language just chosen', async () => {
     const user = userEvent.setup();
     renderHeader();
-    await user.selectOptions(screen.getByLabelText('Language'), 'hi');
-    expect(screen.getByLabelText('Language')).toHaveValue('hi');
+    const select = screen.getByLabelText('Language');
+    await user.selectOptions(select, 'hi');
+    expect(select).toHaveValue('hi');
+    // The control now labels itself in Hindi, which is the point: a switcher a Hindi reader
+    // cannot read is no use to them.
+    expect(screen.getByLabelText('भाषा')).toBe(select);
   });
 
   it('has no axe violations', async () => {

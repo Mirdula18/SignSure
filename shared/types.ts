@@ -143,6 +143,8 @@ export interface AnalysisResult {
   ruleHits: RuleHit[];
   missingInfo: MissingInfoHit[];
   stats: VerificationStats;
+  /** True when part of a long document could not be analysed, so the report is incomplete. */
+  partial: boolean;
 }
 
 export type AskStatus = 'answered' | 'not_in_document' | 'needs_professional';

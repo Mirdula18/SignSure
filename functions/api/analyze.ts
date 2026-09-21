@@ -8,7 +8,8 @@ import type {
   DocumentSummary,
   VerificationStats,
 } from '../../shared/types';
-import { buildVerifiedQuote } from '../../shared/verify';
+import { buildVerifiedQuote, isPresentable } from '../../shared/verify';
+import { required } from '../../shared/arrays';
 import { rankFindings, type Lens } from '../../shared/lenses';
 import type { Env } from '../lib/env';
 import { isMockMode } from '../lib/env';
@@ -35,7 +36,7 @@ const MAX_OUTPUT_TOKENS = 8192;
 /** Splits clauses into prompt-sized batches so a long contract does not blow the token budget. */
 export function batchClauses(
   clauses: readonly Clause[],
-  size = LIMITS.clauseBatchSize,
+  size: number = LIMITS.clauseBatchSize,
 ): Clause[][] {
   const batches: Clause[][] = [];
   for (let index = 0; index < clauses.length; index += size) {
@@ -98,10 +99,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }),
   );
 
-  const succeeded = outcomes.filter((outcome) => outcome.ok);
-  if (succeeded.length === 0) {
-    const first = outcomes[0];
-    return errorResponse(first && !first.ok ? first.code : 'INTERNAL', rateLimitHeaders(rate));
+  const successes = outcomes.flatMap((outcome) => (outcome.ok ? [outcome.data] : []));
+  const failures = outcomes.flatMap((outcome) => (outcome.ok ? [] : [outcome.code]));
+  // A request always holds at least one clause, so with no successes there is a first failure.
+  if (successes.length === 0) {
+    return errorResponse(required(failures, 0), rateLimitHeaders(rate));
   }
 
   const findings: ClauseFinding[] = [];
@@ -109,21 +111,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   let summary: DocumentSummary = EMPTY_SUMMARY;
   let summaryTaken = false;
 
-  for (const outcome of succeeded) {
-    if (!outcome.ok) continue;
-
+  for (const data of successes) {
     // The first batch that produced a summary wins: later batches only saw later clauses, so
     // their view of "who is the employer" is strictly less informed.
-    if (!summaryTaken && outcome.data.documentSummary.overview.length > 0) {
-      summary = toSummary(outcome.data.documentSummary, byId);
+    if (!summaryTaken && data.documentSummary.overview.length > 0) {
+      summary = toSummary(data.documentSummary, byId);
       summaryTaken = true;
     }
 
-    for (const finding of outcome.data.findings) {
+    for (const finding of data.findings) {
       const clause = byId.get(finding.clauseId);
       // A clause id we never sent is a hallucination; there is nothing to verify against.
       if (!clause) continue;
 
+      const evidence = buildVerifiedQuote(clause.id, finding.quote, clause.text);
       findings.push({
         clauseId: clause.id,
         category: finding.category,
@@ -131,11 +132,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         title: finding.title,
         explanation: finding.explanation,
         whyItMatters: finding.whyItMatters,
-        evidence: buildVerifiedQuote(clause.id, finding.quote, clause.text),
+        evidence,
         questionsToAsk: finding.questionsToAsk,
         modelConfidence: finding.confidence,
       });
-      categories[clause.id] = finding.category;
+
+      // The category steers which reviewed rules run, so it is taken only from a finding whose
+      // quote checked out, and the first such finding keeps it. Otherwise an unverified claim
+      // about a clause could change the legal context shown for that clause.
+      if (isPresentable(evidence) && categories[clause.id] === undefined) {
+        categories[clause.id] = finding.category;
+      }
     }
   }
 
@@ -149,6 +156,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     ruleHits,
     missingInfo,
     stats: countVerification(ranked),
+    // Some batches failed: say so, rather than presenting part of a document as all of it.
+    partial: failures.length > 0,
   };
 
   return json(result, 200, rateLimitHeaders(rate));

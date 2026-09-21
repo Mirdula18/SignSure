@@ -116,6 +116,14 @@ export function toChanges(
   return changes;
 }
 
+/**
+ * Verifies a quote against its own side, accepting only an exact match.
+ *
+ * Everywhere else a close match is useful: it tolerates a model tidying punctuation. In a
+ * comparison it is the opposite of useful. Two versions that differ by one word - "thirty days"
+ * against "ninety days" - are a close match for each other by construction, so a fuzzy result
+ * would happily illustrate the old version with the new wording. The one word is the change.
+ */
 function verifySide(
   clause: ClausePair['a'],
   quote: string | null | undefined,
@@ -123,5 +131,9 @@ function verifySide(
   if (clause === null || quote === null || quote === undefined || quote.trim().length === 0) {
     return null;
   }
-  return buildVerifiedQuote(clause.id, quote, clause.text);
+  const verified = buildVerifiedQuote(clause.id, quote, clause.text);
+  if (verified.status === 'fuzzy') {
+    return { clauseId: verified.clauseId, quote: verified.quote, status: 'unverified' };
+  }
+  return verified;
 }

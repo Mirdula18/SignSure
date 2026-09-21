@@ -287,6 +287,8 @@ export const analyzeResponseSchema = z.object({
     fuzzy: z.number().int().nonnegative(),
     unverified: z.number().int().nonnegative(),
   }),
+  // Defaulted so a response from a deployment that predates the field still renders.
+  partial: z.boolean().default(false),
 });
 
 export const askResponseSchema = z.object({

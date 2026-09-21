@@ -1,0 +1,35 @@
+{
+  "description": "Restrictions that follow the employee out of the door: a two-year post-employment non-compete, non-solicitation, and IP assignment reaching outside working hours.",
+  "categories": {
+    "1.1": "GENERAL",
+    "2.1": "COMPENSATION",
+    "3.1": "IP_ASSIGNMENT",
+    "4.1": "NON_COMPETE",
+    "5.1": "NON_SOLICIT",
+    "6.1": "TERMINATION",
+    "6.2": "NOTICE_PERIOD",
+    "7.1": "WORKING_HOURS_LEAVE",
+    "8.1": "DISPUTE_RESOLUTION"
+  },
+  "mustFindCategories": ["NON_COMPETE", "NON_SOLICIT", "IP_ASSIGNMENT"],
+  "mustFlagRules": [
+    "IN-EMP-NONCOMPETE-POST",
+    "IN-EMP-NONSOLICIT",
+    "IN-EMP-IP-BROAD",
+    "IN-EMP-TERMINATION-NO-NOTICE",
+    "IN-EMP-NOTICE-LONG",
+    "IN-EMP-JURISDICTION"
+  ],
+  "mustNotFlagRules": ["IN-EMP-NONCOMPETE-DURING", "IN-EMP-BOND", "IN-EMP-DOC-RETENTION"],
+  "expectedSeverity": { "IN-EMP-NOTICE-LONG": "MEDIUM", "IN-EMP-NONCOMPETE-POST": "HIGH" },
+  "mustReportMissing": ["IN-EMP-MISSING-PROBATION"],
+  "mustNotReportMissing": ["IN-EMP-MISSING-ROLE", "IN-EMP-MISSING-LEAVE"],
+  "questions": [
+    {
+      "q": "Can they stop me from joining a competitor after I leave?",
+      "expect": ["needs_professional", "answered"],
+      "clauseLabels": ["4.1"]
+    },
+    { "q": "Will the company pay for my relocation to Mumbai?", "expect": "not_in_document" }
+  ]
+}

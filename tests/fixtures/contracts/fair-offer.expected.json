@@ -1,0 +1,32 @@
+{
+  "description": "A balanced offer: mutual 30-day notice, capped probation, leave stated, no bond, no post-employment restraint. The test is that SignSure does not cry wolf.",
+  "categories": {
+    "2.1": "COMPENSATION",
+    "3.1": "PROBATION",
+    "4.1": "WORKING_HOURS_LEAVE",
+    "5.1": "NOTICE_PERIOD",
+    "6.1": "CONFIDENTIALITY",
+    "7.1": "MOONLIGHTING",
+    "8.1": "DISPUTE_RESOLUTION"
+  },
+  "mustFindCategories": ["NOTICE_PERIOD", "COMPENSATION"],
+  "mustFlagRules": ["IN-EMP-WAGES-50", "IN-EMP-CONFIDENTIALITY", "IN-EMP-NONCOMPETE-DURING"],
+  "mustNotFlagRules": [
+    "IN-EMP-NONCOMPETE-POST",
+    "IN-EMP-BOND",
+    "IN-EMP-NOTICE-LONG",
+    "IN-EMP-NOTICE-ASYMMETRIC",
+    "IN-EMP-DOC-RETENTION",
+    "IN-EMP-PROBATION-EXTEND"
+  ],
+  "mustReportMissing": [],
+  "mustNotReportMissing": [
+    "IN-EMP-MISSING-NOTICE",
+    "IN-EMP-MISSING-LEAVE",
+    "IN-EMP-MISSING-SALARY"
+  ],
+  "questions": [
+    { "q": "What is my notice period?", "expect": "answered", "clauseLabels": ["5.1"] },
+    { "q": "Do I get health insurance for my parents?", "expect": "not_in_document" }
+  ]
+}

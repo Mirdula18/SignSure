@@ -1,4 +1,5 @@
 import { en, type Dictionary, type TranslationKey } from './en';
+import { hi } from './hi';
 
 export type Language = 'en' | 'hi';
 
@@ -6,9 +7,9 @@ export const LANGUAGES: readonly Language[] = ['en', 'hi'] as const;
 
 const dictionaries: Record<Language, Dictionary> = {
   en,
-  // Hindi is filled in during the accessibility phase; falling back to English keeps the UI
-  // usable instead of showing raw keys.
-  hi: en,
+  // Hindi is typed against the English dictionary, so every key is present; `translate()` still
+  // falls back to English for safety rather than rendering a raw key.
+  hi,
 };
 
 export type TranslateParams = Readonly<Record<string, string | number>>;

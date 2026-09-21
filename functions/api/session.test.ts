@@ -5,7 +5,7 @@ import type { Env } from '../lib/env';
 import { hashIp, issueSession, TOKEN_LIFETIME_SECONDS, verifySession } from '../lib/session';
 import { onRequestPost, requireSession } from './session';
 
-const SECRET = 'a-thirty-two-byte-test-secret-01';
+const SECRET = 'test only: a thirty-two byte key';
 const SALT = 'test-ip-hash-salt';
 const IP = '203.0.113.7';
 const OTHER_IP = '198.51.100.22';

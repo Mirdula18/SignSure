@@ -7,8 +7,8 @@ import {
   type SessionPayload,
 } from './session';
 
-const SECRET = 'a-thirty-two-byte-test-secret-01';
-const OTHER_SECRET = 'a-different-thirty-two-byte-key0';
+const SECRET = 'test only: a thirty-two byte key';
+const OTHER_SECRET = 'test only: a different byte key.';
 const SALT = 'test-ip-hash-salt';
 const IP_HASH = 'a1b2c3d4e5f60718';
 

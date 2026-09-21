@@ -40,8 +40,8 @@ describe('GET /api/health', () => {
   });
 
   it('never returns a secret value, only whether it is present', async () => {
-    const secret = 'AIzaSyFAKEFAKEFAKEFAKEFAKEFAKEFAKE1234';
-    const sessionSecret = 'super-secret-session-key-that-is-long-enough';
+    const secret = 'fake gemini key used only in tests';
+    const sessionSecret = 'test only: a long enough session key';
     const { body } = await call({ GEMINI_API_KEY: secret, SESSION_SECRET: sessionSecret });
     const serialised = JSON.stringify(body);
     expect(serialised).not.toContain(secret);

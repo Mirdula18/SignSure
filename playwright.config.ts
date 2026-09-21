@@ -37,7 +37,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       MOCK_GEMINI: 'true',
-      SESSION_SECRET: 'e2e-session-secret-at-least-32-bytes-long',
+      SESSION_SECRET: 'e2e only: a session secret of 32+ bytes',
       IP_HASH_SALT: 'e2e-ip-hash-salt',
       TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
       ALLOWED_ORIGIN: BASE_URL,

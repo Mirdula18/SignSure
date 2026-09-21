@@ -1,0 +1,22 @@
+{
+  "description": "The revised version of bond-heavy.txt, for compare: a shorter, pro-rated bond, the document-retention clause removed, and notice made equal on both sides.",
+  "compareWith": "bond-heavy.txt",
+  "expectChanged": ["3.1", "3.2", "5.1"],
+  "expectRemoved": ["4.1"],
+  "expectUnchangedAtLeast": 3,
+  "categories": {
+    "1.1": "GENERAL",
+    "2.1": "COMPENSATION",
+    "3.1": "BOND_OR_EXIT_PENALTY",
+    "3.2": "BOND_OR_EXIT_PENALTY",
+    "5.1": "NOTICE_PERIOD",
+    "6.1": "WORKING_HOURS_LEAVE"
+  },
+  "mustFindCategories": ["BOND_OR_EXIT_PENALTY"],
+  "mustFlagRules": ["IN-EMP-BOND", "IN-EMP-NOTICE-LONG"],
+  "mustNotFlagRules": ["IN-EMP-NOTICE-ASYMMETRIC", "IN-EMP-DOC-RETENTION"],
+  "expectedDetails": { "IN-EMP-BOND": { "amount": "Rs. 1,50,000" } },
+  "mustReportMissing": [],
+  "mustNotReportMissing": ["IN-EMP-MISSING-NOTICE"],
+  "questions": []
+}

@@ -1,0 +1,23 @@
+{
+  "description": "A short, vague offer that is mostly silence: no notice period, no role, no location, no leave, no probation. The value here is in what SignSure says is missing.",
+  "categories": {},
+  "categoriesByText": {
+    "joining bonus": "COMPENSATION",
+    "reserves the right": "GENERAL"
+  },
+  "mustFindCategories": ["COMPENSATION"],
+  "mustFlagRules": ["IN-EMP-CLAWBACK", "IN-EMP-UNILATERAL-CHANGE"],
+  "mustNotFlagRules": ["IN-EMP-NOTICE-LONG", "IN-EMP-BOND", "IN-EMP-NONCOMPETE-POST"],
+  "mustReportMissing": [
+    "IN-EMP-MISSING-NOTICE",
+    "IN-EMP-MISSING-ROLE",
+    "IN-EMP-MISSING-LOCATION",
+    "IN-EMP-MISSING-LEAVE",
+    "IN-EMP-MISSING-PROBATION"
+  ],
+  "mustNotReportMissing": ["IN-EMP-MISSING-SALARY"],
+  "questions": [
+    { "q": "What is my notice period?", "expect": "not_in_document" },
+    { "q": "What is my CTC?", "expect": "answered" }
+  ]
+}

@@ -4,6 +4,8 @@ import { suggestedQuestionKeys } from '@shared/lenses';
 import type { AskStatus, Clause } from '@shared/types';
 import { Button } from '@/components/Button';
 import { VerificationBadge } from '@/components/Badge';
+import { GlossaryText } from '@/features/a11y/GlossaryText';
+import { ReadAloud } from '@/features/a11y/ReadAloud';
 import { useAppState, type QaEntry } from '@/state/appState';
 import { useT } from '@/state/preferences';
 import type { TranslationKey } from '@/i18n';
@@ -169,8 +171,9 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
           </p>
 
           <p className="prose-measure mt-2 text-sm leading-relaxed text-ink">
-            {entry.result.answer}
+            <GlossaryText text={entry.result.answer} />
           </p>
+          <ReadAloud label={entry.question} text={entry.result.answer} />
 
           {entry.result.citations.length === 0 ? null : (
             <div className="mt-3">

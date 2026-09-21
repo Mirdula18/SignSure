@@ -4,6 +4,8 @@ import { CategoryBadge, RiskBadge, VerificationBadge } from '@/components/Badge'
 import { Button } from '@/components/Button';
 import { useT } from '@/state/preferences';
 import { ClauseTitle, SideBySide } from './SideBySide';
+import { GlossaryText } from '@/features/a11y/GlossaryText';
+import { ReadAloud } from '@/features/a11y/ReadAloud';
 import type { TranslationKey } from '@/i18n';
 
 /**
@@ -55,11 +57,13 @@ export function FindingCard({ finding, clause, defaultOpen = false }: FindingCar
       </h3>
       <ClauseTitle clause={clause} />
 
-      <p className="prose-measure mt-2 text-sm leading-relaxed text-ink">{finding.explanation}</p>
+      <p className="prose-measure mt-2 text-sm leading-relaxed text-ink">
+        <GlossaryText text={finding.explanation} />
+      </p>
 
       <p className="prose-measure mt-2 text-sm leading-relaxed text-muted">
         <span className="font-medium text-ink">{t('clauses.whyItMatters')}: </span>
-        {finding.whyItMatters}
+        <GlossaryText text={finding.whyItMatters} />
       </p>
 
       {finding.questionsToAsk.length === 0 ? null : (
@@ -75,7 +79,11 @@ export function FindingCard({ finding, clause, defaultOpen = false }: FindingCar
         </div>
       )}
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <ReadAloud
+          label={finding.title}
+          text={`${finding.title}. ${finding.explanation} ${finding.whyItMatters}`}
+        />
         <Button
           aria-expanded={open}
           aria-controls={detailsId}

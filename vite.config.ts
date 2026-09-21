@@ -20,17 +20,6 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     reportCompressedSize: true,
-    rollupOptions: {
-      output: {
-        // Keep the heavy, lazily-imported parsers in their own chunks so they never
-        // land in the initial bundle.
-        manualChunks(id) {
-          if (id.includes('pdfjs-dist')) return 'pdf-parser';
-          if (id.includes('mammoth')) return 'docx-parser';
-          return undefined;
-        },
-      },
-    },
   },
   server: {
     port: 5173,

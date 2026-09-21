@@ -2,8 +2,11 @@
 /**
  * Enforces the initial-JS budget from docs/ARCHITECTURE.md section 10.
  *
- * "Initial" means only what index.html loads before any user interaction: the lazily imported
- * PDF and DOCX parsers are deliberately excluded and are checked separately for being split out.
+ * "Initial" means only what index.html loads before any interaction: the entry script plus
+ * anything Vite adds a `modulepreload` link for. The PDF and DOCX parsers must not be in that
+ * set, and the check for that looks for marker strings *inside* the initial chunks rather than
+ * matching chunk filenames - a filename check passes happily when a bundler decision quietly
+ * merges a parser into the entry, which is exactly the regression this is here to catch.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
@@ -11,7 +14,12 @@ import { join } from 'node:path';
 
 const DIST = 'dist';
 const BUDGET_KB = 180;
-const LAZY_CHUNKS = ['pdf-parser', 'docx-parser'];
+
+/** Strings that only appear if the library itself was bundled in. */
+const LAZY_LIBRARY_MARKERS = [
+  { name: 'pdf.js', marker: 'PDFDocumentLoadingTask' },
+  { name: 'mammoth', marker: 'extractRawText' },
+];
 
 function gzipKb(path) {
   return gzipSync(readFileSync(path)).length / 1024;
@@ -26,12 +34,10 @@ try {
 }
 
 const entrySrcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
-const assets = readdirSync(join(DIST, 'assets'));
-
-// Everything statically reachable from the entry is preloaded by Vite via modulepreload.
 const preloaded = [...html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="([^"]+)"/g)].map(
   (m) => m[1],
 );
+
 const initial = [...new Set([...entrySrcs, ...preloaded])]
   .map((href) => href.replace(/^\//, ''))
   .filter((p) => p.endsWith('.js'));
@@ -44,9 +50,12 @@ for (const rel of initial) {
   rows.push([rel, kb]);
 }
 
+const assets = readdirSync(join(DIST, 'assets'));
+const initialNames = new Set(initial.map((p) => p.replace(/^assets\//, '')));
 const lazy = assets
-  .filter((f) => f.endsWith('.js') && LAZY_CHUNKS.some((c) => f.startsWith(c)))
-  .map((f) => [`assets/${f}`, gzipKb(join(DIST, 'assets', f))]);
+  .filter((f) => (f.endsWith('.js') || f.endsWith('.mjs')) && !initialNames.has(f))
+  .map((f) => [`assets/${f}`, gzipKb(join(DIST, 'assets', f))])
+  .sort((a, b) => b[1] - a[1]);
 
 const css = assets
   .filter((f) => f.endsWith('.css'))
@@ -59,13 +68,18 @@ console.log(`  ${'TOTAL'.padEnd(46)} ${fmt(total)}  (budget ${BUDGET_KB} kB)`);
 console.log(`CSS (gzip): ${fmt(css)}`);
 
 if (lazy.length > 0) {
-  console.log('Lazy chunks (not in the initial load):');
-  for (const [name, kb] of lazy) console.log(`  ${name.padEnd(46)} ${fmt(kb)}`);
+  console.log('Lazy chunks (fetched only when needed):');
+  for (const [name, kb] of lazy.slice(0, 8)) console.log(`  ${name.padEnd(46)} ${fmt(kb)}`);
 }
 
-const inlinedParser = rows.find(([name]) => LAZY_CHUNKS.some((c) => name.includes(c)));
-if (inlinedParser) {
-  console.error(`\nFAIL: ${inlinedParser[0]} is in the initial load but must be lazy-imported.`);
+// The check that actually matters: is a lazily-imported library sitting in the initial load?
+const initialSource = initial.map((rel) => readFileSync(join(DIST, rel), 'utf8')).join('');
+const leaked = LAZY_LIBRARY_MARKERS.filter(({ marker }) => initialSource.includes(marker));
+if (leaked.length > 0) {
+  console.error(
+    `\nFAIL: ${leaked.map((l) => l.name).join(' and ')} ended up in the initial load. ` +
+      'These must stay behind a dynamic import.',
+  );
   process.exit(1);
 }
 

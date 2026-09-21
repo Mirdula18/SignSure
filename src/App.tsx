@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import type { Lens } from '@shared/lenses';
 import { AppFooter } from '@/components/AppFooter';
 import { AppHeader } from '@/components/AppHeader';
 import { DisclaimerBanner } from '@/components/DisclaimerBanner';
@@ -20,8 +21,8 @@ export default function App() {
   const { state, dispatch } = useAppState();
 
   const onAnalyse = useCallback(
-    (lenses: Parameters<typeof dispatch>[0] extends never ? never : string[]) => {
-      dispatch({ type: 'lensesChosen', lenses: lenses as never });
+    (lenses: Lens[]) => {
+      dispatch({ type: 'lensesChosen', lenses });
       dispatch({ type: 'analysisStarted' });
     },
     [dispatch],

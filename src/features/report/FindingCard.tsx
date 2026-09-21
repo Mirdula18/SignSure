@@ -38,6 +38,10 @@ export function FindingCard({ finding, clause, defaultOpen = false }: FindingCar
     <article
       aria-labelledby={headingId}
       id={`clause-${clause.id}`}
+      // -1 makes the card a target for programmatic focus without adding it to the Tab order.
+      // Following a citation calls focus() on it; without this, focus() on an article is a
+      // silent no-op and a keyboard user is left wherever they were.
+      tabIndex={-1}
       className="scroll-mt-28 rounded-xl border border-line bg-surface p-4"
     >
       <header className="flex flex-wrap items-center gap-2">

@@ -43,6 +43,8 @@ export default defineConfig({
         '**/*.d.ts',
         'src/main.tsx',
         'src/sample/**',
+        // Test builders are infrastructure for the suite, not product code.
+        'src/test/**',
         'functions/lib/mock/**',
         'shared/**/index.ts',
       ],

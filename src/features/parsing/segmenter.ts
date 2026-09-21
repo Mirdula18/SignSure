@@ -21,13 +21,23 @@ export interface SourceLine {
 }
 
 export interface SegmentOptions {
-  /** Below this, a paragraph is merged into the previous clause instead of standing alone. */
+  /** Below this, a paragraph that is not a complete sentence is merged into the clause above. */
   minClauseChars?: number;
   /** Above this, a clause is split at a sentence boundary. */
   maxClauseChars?: number;
 }
 
 const DEFAULT_MIN_CLAUSE_CHARS = 200;
+
+/**
+ * A short paragraph that is at least this long and reads as a finished sentence stands alone.
+ *
+ * Why: unnumbered offer letters are written as short paragraphs, one term each ("Your CTC will
+ * be..."). Merging every paragraph under `minClauseChars` folded a whole letter into one clause,
+ * so a citation pointed at the entire letter and the salary term was classified as a greeting.
+ */
+const MIN_STANDALONE_SENTENCE_CHARS = 60;
+const COMPLETE_SENTENCE = /^[\p{Lu}\p{N}"'(].*[.!?।]["')\]]*$/su;
 
 /**
  * `1.` `1.1` `2.3.4` `7)` followed by real content.
@@ -202,19 +212,26 @@ function toBlocks(lines: readonly SourceLine[]): Block[] {
   return blocks.filter((block) => blockText(block).length > 0);
 }
 
+/** True for a short block that cannot stand on its own: a sign-off, a salutation, a tail. */
+function isFragment(text: string, minChars: number): boolean {
+  if (text.length >= minChars) return false;
+  return text.length < MIN_STANDALONE_SENTENCE_CHARS || !COMPLETE_SENTENCE.test(text);
+}
+
 /**
- * Merges short unlabelled blocks into the clause above them.
+ * Merges short unlabelled fragments into the clause above them.
  *
  * Why: a stray line like "and any renewal thereof." is not a clause, and leaving it alone would
  * put a citation target in the report that means nothing on its own. Blocks that carry their own
- * number are never merged, because the document itself says they are separate.
+ * number are never merged, because the document itself says they are separate; nor is a short
+ * paragraph that is a complete sentence, because in a letter that is how each term is written.
  */
 function mergeShortBlocks(blocks: readonly Block[], minChars: number): Block[] {
   const merged: Block[] = [];
   for (const block of blocks) {
     const previous = merged[merged.length - 1];
     const isStandalone = block.label !== null || block.heading !== null;
-    if (!isStandalone && previous !== undefined && blockText(block).length < minChars) {
+    if (!isStandalone && previous !== undefined && isFragment(blockText(block), minChars)) {
       previous.lines.push(...block.lines);
       continue;
     }

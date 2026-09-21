@@ -327,7 +327,11 @@ export const EMPLOYMENT_RULES: readonly Rule[] = [
         /(may be|can be|shall be|liable to be) extended|extend(ed)? at the (sole )?discretion/.test(
           text,
         ) &&
-        !/maximum|not exceed|no longer than|up to a total/.test(text),
+        // Any stated cap means the reader can plan around it: "no more than three further
+        // months" and "extended once" are limits, just not ones that use the word "maximum".
+        !/maximum|not exceed|no longer than|no more than|not more than|at most|up to a total|extended (only )?once|one further period/.test(
+          text,
+        ),
     ),
     title: 'Probation with no stated maximum',
     message:
@@ -401,8 +405,14 @@ export const MISSING_INFO_RULES: readonly MissingInfoRule[] = [
     id: 'IN-EMP-MISSING-NOTICE',
     label: 'Notice period',
     question: 'What is the notice period for me and for the company?',
+    // Uses the same extractor as the notice rules, so "thirty (30) days written notice" and
+    // "one month's notice" count; a fixed phrase list missed every wording it did not foresee.
     isPresent: (_clauses, texts) =>
-      texts.some((text) => /notice period|notice of \d|days notice|months notice/.test(text)),
+      texts.some((text) => {
+        if (text.includes('notice period')) return true;
+        const { employee, employer, unattributed } = extractNoticePeriods(text);
+        return employee !== null || employer !== null || unattributed.length > 0;
+      }),
   },
   {
     id: 'IN-EMP-MISSING-SALARY',
@@ -419,7 +429,9 @@ export const MISSING_INFO_RULES: readonly MissingInfoRule[] = [
     question: 'What is my exact designation and who will I report to?',
     isPresent: (_clauses, texts) =>
       texts.some((text) =>
-        /designation|job title|position of|role of|reporting to|duties/.test(text),
+        /designation|job title|position of|role of|reporting to|report to|duties|(appointed|employed|engaged|join|joins|joining) as (an? )?\w/.test(
+          text,
+        ),
       ),
   },
   {
@@ -439,7 +451,9 @@ export const MISSING_INFO_RULES: readonly MissingInfoRule[] = [
     // sits in a working-hours clause and tells the reader nothing about the leave they get.
     isPresent: (_clauses, texts) =>
       texts.some((text) =>
-        /(annual|casual|sick|earned|privilege|paid|maternity|paternity) leave|leave (entitlement|policy|balance|of \d)|\d+ (days?|weeks?) of (paid )?leave|leave per (year|annum)|vacation (days|entitlement|policy)/.test(
+        // "As per the leave policy" is deliberately not enough: it points at a document the
+        // reader has not been given and tells them nothing about how much leave they get.
+        /(annual|casual|sick|earned|privilege|paid|maternity|paternity) leave|leave (entitlement|balance|of \d)|\d+ (days?|weeks?) of (paid )?leave|leave per (year|annum)|vacation (days|entitlement)/.test(
           text,
         ),
       ),

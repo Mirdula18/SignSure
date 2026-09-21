@@ -559,6 +559,16 @@ describe('IN-EMP-PROBATION-EXTEND', () => {
     ).toEqual([]);
   });
 
+  it.each([
+    'Probation is six (6) months and may be extended once, by no more than three further months.',
+    'Probation is six (6) months and may be extended by not more than three months.',
+    'Probation is six (6) months and may be extended, at most, by a further three months.',
+    'Probation is six (6) months and may be extended only once for one further period of three months.',
+  ])('does not flag an extension capped in other words: %s', (text) => {
+    // Near miss taken from the golden set: a cap that never says "maximum".
+    expect(hitIds(text, 'PROBATION')).toEqual([]);
+  });
+
   it('does not flag a fixed probation period', () => {
     expect(
       hitIds(
@@ -891,6 +901,23 @@ describe('findMissingInfo', () => {
     expect(missingIds(without('c005'))).toEqual(['IN-EMP-MISSING-NOTICE']);
   });
 
+  it.each([
+    'Either party may end this appointment by giving thirty (30) days written notice.',
+    'You must give one month’s notice before resigning.',
+    'The Company may terminate your employment by giving 60 days notice.',
+  ])('recognises a notice period however it is worded: %s', (text) => {
+    // The same extractor as the notice rules, so a period is found wherever a rule would read it.
+    expect(missingIds([...without('c005'), clause(text, { id: 'c009', order: 9 })])).toEqual([]);
+  });
+
+  it('still asks for a notice period when "notice" appears without one', () => {
+    const vague = clause('Any notice under this letter must be given in writing to HR.', {
+      id: 'c009',
+      order: 9,
+    });
+    expect(missingIds([...without('c005'), vague])).toEqual(['IN-EMP-MISSING-NOTICE']);
+  });
+
   it('recognises stated salary details and asks for them when they are absent', () => {
     expect(missingIds(COMPLETE)).not.toContain('IN-EMP-MISSING-SALARY');
     expect(missingIds(without('c002'))).toEqual(['IN-EMP-MISSING-SALARY']);
@@ -901,6 +928,14 @@ describe('findMissingInfo', () => {
     expect(missingIds(without('c001'))).toEqual(['IN-EMP-MISSING-ROLE']);
   });
 
+  it.each([
+    'You are appointed as a Support Associate in the Customer Care team.',
+    'You will be employed as an Analyst with effect from your date of joining.',
+    'We are pleased that you will join as Graduate Engineer Trainee.',
+  ])('recognises a role stated in an appointment sentence: %s', (text) => {
+    expect(missingIds([...without('c001'), clause(text, { id: 'c009', order: 9 })])).toEqual([]);
+  });
+
   it('recognises a stated work location and asks for one when it is absent', () => {
     expect(missingIds(COMPLETE)).not.toContain('IN-EMP-MISSING-LOCATION');
     expect(missingIds(without('c003'))).toEqual(['IN-EMP-MISSING-LOCATION']);
@@ -909,6 +944,18 @@ describe('findMissingInfo', () => {
   it('recognises a stated leave entitlement and asks for one when it is absent', () => {
     expect(missingIds(COMPLETE)).not.toContain('IN-EMP-MISSING-LEAVE');
     expect(missingIds(without('c006'))).toEqual(['IN-EMP-MISSING-LEAVE']);
+  });
+
+  it('asks for leave when the letter only points at a leave policy it does not include', () => {
+    // "As per policy" tells the reader nothing about how much leave they will get.
+    const pointer = clause(
+      'Leave shall be as per the Company’s leave policy as amended from time to time.',
+      {
+        id: 'c009',
+        order: 9,
+      },
+    );
+    expect(missingIds([...without('c006'), pointer])).toEqual(['IN-EMP-MISSING-LEAVE']);
   });
 
   it('recognises stated probation terms and asks for them when they are absent', () => {

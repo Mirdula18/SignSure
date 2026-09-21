@@ -145,6 +145,50 @@ describe('segment', () => {
     expect(clauses[0]?.text).toMatch(/and any renewal thereof\.$/);
   });
 
+  it('keeps each short, complete paragraph of an unnumbered letter as its own clause', () => {
+    // Letters state one term per paragraph. Merging them folded the salary into the greeting.
+    const clauses = segment(
+      linesFromText(
+        [
+          'We are happy to offer you employment with Quickstart Logistics Private Limited.',
+          '',
+          'Your annual CTC will be Rs. 3,60,000, paid monthly into your salary account.',
+          '',
+          'Please report on 1 December 2026 with a copy of your identity proof.',
+        ].join('\n'),
+      ),
+    );
+    expect(clauses.map((item) => item.text.slice(0, 12))).toEqual([
+      'We are happy',
+      'Your annual ',
+      'Please repor',
+    ]);
+  });
+
+  it.each([
+    [
+      'a sentence that carries on from the paragraph above',
+      'which the Company may recover from any amount due to you at the time of exit.',
+    ],
+    [
+      'a line with no closing punctuation',
+      'For and on behalf of Quickstart Logistics Private Limited, Chennai',
+    ],
+    ['a sentence too short to be a term', 'We look forward to having you on the team.'],
+  ])('still merges %s', (_kind, fragment) => {
+    const clauses = segment(
+      linesFromText(
+        [
+          'You will receive a joining bonus of Rs. 25,000 after completing three months of service.',
+          '',
+          fragment,
+        ].join('\n'),
+      ),
+    );
+    expect(clauses).toHaveLength(1);
+    expect(clauses[0]?.text.endsWith(fragment)).toBe(true);
+  });
+
   it('does not read a sentence that opens with a figure as a clause number', () => {
     const clauses = segment(
       linesFromText(

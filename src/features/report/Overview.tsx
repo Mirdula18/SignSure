@@ -70,6 +70,14 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
           })}
         </dl>
 
+        {analysis.partial ? (
+          // Not an alert: it describes the report, it is not an event the reader must act on now.
+          <p className="mt-4 rounded-lg border border-medium bg-medium-soft p-3 text-sm text-ink">
+            <span aria-hidden="true">◆ </span>
+            {t('report.partial')}
+          </p>
+        ) : null}
+
         <p className="mt-4 text-xs text-muted">
           {t('report.verifiedCount', { verified: analysis.stats.verified, total })}
           {analysis.stats.unverified > 0

@@ -3,7 +3,7 @@ import type { Clause, CompareResult } from '@shared/types';
 import { Button } from '@/components/Button';
 import { VerificationBadge } from '@/components/Badge';
 import { Dropzone } from '@/features/upload/Dropzone';
-import { parseFile } from '@/features/parsing/parseDocument';
+import { parseFile, type ParseFailure } from '@/features/parsing/parseDocument';
 import { useT } from '@/state/preferences';
 import type { TranslationKey } from '@/i18n';
 
@@ -37,21 +37,23 @@ export function CompareTab({
   hasSecondDocument,
 }: CompareTabProps) {
   const t = useT();
-  const [parseError, setParseError] = useState(false);
+  const [parseError, setParseError] = useState<ParseFailure | null>(null);
   const statusId = useId();
 
   const byIdA = new Map(clausesA.map((clause) => [clause.id, clause]));
 
   const handleFile = useCallback(
     (file: File) => {
-      setParseError(false);
+      setParseError(null);
       parseFile(file)
         .then((parsed) => {
           if (parsed.ok) onSecondDocument(parsed.document.clauses);
-          else setParseError(true);
+          // Keep the specific reason: "this is a scanned PDF" tells the reader what to do next,
+          // where a generic "could not be read" does not.
+          else setParseError(parsed);
         })
         .catch(() => {
-          setParseError(true);
+          setParseError({ ok: false, reason: 'UNKNOWN' });
         });
     },
     [onSecondDocument],
@@ -66,11 +68,11 @@ export function CompareTab({
 
       {hasSecondDocument ? null : <Dropzone onFile={handleFile} />}
 
-      {parseError ? (
+      {parseError === null ? null : (
         <p role="alert" className="text-sm text-high">
-          {t('upload.error.UNKNOWN')}
+          {t(`upload.error.${parseError.reason}` as TranslationKey, parseError.detail)}
         </p>
-      ) : null}
+      )}
 
       {hasSecondDocument ? (
         <div>
@@ -100,7 +102,7 @@ export function CompareTab({
               <thead>
                 <tr className="border-b border-line text-start">
                   <th scope="col" className="p-2 text-start font-semibold text-ink">
-                    {t('compare.changeType.CHANGED')}
+                    {t('compare.changeColumn')}
                   </th>
                   <th scope="col" className="p-2 text-start font-semibold text-ink">
                     {t('compare.versionA')}

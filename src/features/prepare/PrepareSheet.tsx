@@ -13,7 +13,8 @@ import type { TranslationKey } from '@/i18n';
  *
  * Export is three routes because people actually use all three - print for a meeting, copy for
  * a WhatsApp message to a parent or a friend, download for a lawyer. The Markdown is built from
- * the same data the page renders, so what is exported is exactly what was shown.
+ * the same data the page renders and in the same language, so what is exported is exactly what
+ * was shown.
  */
 
 const SECTIONS = [
@@ -31,57 +32,89 @@ export interface PrepareSheetProps {
   flagged: readonly { label: string; risk: string; title: string; text: string }[];
 }
 
-/** Builds the downloadable sheet. Plain Markdown so it opens anywhere, including on a phone. */
+/** Every piece of fixed text in the export, already translated by the caller. */
+export interface MarkdownText {
+  title: string;
+  document: (name: string) => string;
+  flaggedHeading: string;
+  footer: string;
+  sections: Readonly<Record<(typeof SECTIONS)[number][1], string>>;
+}
+
+/**
+ * Builds the downloadable sheet. Plain Markdown so it opens anywhere, including on a phone.
+ *
+ * Takes its fixed text as a parameter instead of calling `t()` itself, so it stays a pure
+ * function that is easy to test - and a Hindi reader gets a Hindi file, not one with English
+ * headings wrapped around Hindi content.
+ */
 export function toMarkdown(
   sheet: PrepareResult,
   documentName: string | null,
   flagged: PrepareSheetProps['flagged'],
-  headings: Readonly<Record<string, string>>,
+  text: MarkdownText,
 ): string {
-  const lines: string[] = ['# Preparing to discuss your offer', ''];
-  if (documentName !== null) lines.push(`Document: ${documentName}`, '');
+  const lines: string[] = [`# ${text.title}`, ''];
+  if (documentName !== null) lines.push(text.document(documentName), '');
 
   for (const [key, headingKey] of SECTIONS) {
     const items = sheet[key];
     if (items.length === 0) continue;
-    lines.push(`## ${headings[headingKey] ?? headingKey}`, '');
+    lines.push(`## ${text.sections[headingKey]}`, '');
     for (const item of items) lines.push(`- [ ] ${item}`);
     lines.push('');
   }
 
   if (flagged.length > 0) {
-    lines.push('## Clauses worth a close look', '');
+    lines.push(`## ${text.flaggedHeading}`, '');
     for (const clause of flagged) {
       lines.push(`### ${clause.label} — ${clause.title} (${clause.risk})`, '');
       lines.push('> ' + clause.text.replace(/\n/g, '\n> '), '');
     }
   }
 
-  lines.push('---', '');
-  lines.push(
-    'Prepared with SignSure. This is information, not legal advice. Please confirm anything important with a qualified advocate.',
-  );
+  lines.push('---', '', text.footer);
   return lines.join('\n');
 }
 
+type CopyStatus = 'idle' | 'copied' | 'failed';
+
 export function PrepareSheet({ sheet, documentName, flagged }: PrepareSheetProps) {
   const t = useT();
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
+  // Bumped on every copy so a second copy is announced again: a live region only speaks when
+  // its content changes, and "Copied" replaced by "Copied" is no change at all.
+  const [copyCount, setCopyCount] = useState(0);
   const statusId = useId();
 
-  const headings: Record<string, string> = {};
-  for (const [, headingKey] of SECTIONS) headings[headingKey] = t(headingKey);
-
-  const markdown = toMarkdown(sheet, documentName, flagged, headings);
+  const markdown = toMarkdown(sheet, documentName, flagged, {
+    title: t('prepare.exportTitle'),
+    document: (name) => t('prepare.exportDocument', { name }),
+    flaggedHeading: t('prepare.exportFlagged'),
+    footer: t('prepare.exportFooter'),
+    sections: {
+      'prepare.checklist': t('prepare.checklist'),
+      'prepare.questionsForHR': t('prepare.questionsForHR'),
+      'prepare.questionsForLawyer': t('prepare.questionsForLawyer'),
+      'prepare.missingInformation': t('prepare.missingInformation'),
+      'prepare.documentsToBring': t('prepare.documentsToBring'),
+    },
+  });
 
   const copy = useCallback(() => {
+    setCopyCount((count) => count + 1);
+    // Older browsers and non-secure contexts have no async clipboard at all.
+    if (typeof navigator.clipboard?.writeText !== 'function') {
+      setCopyStatus('failed');
+      return;
+    }
     navigator.clipboard
       .writeText(markdown)
       .then(() => {
-        setCopied(true);
+        setCopyStatus('copied');
       })
       .catch(() => {
-        setCopied(false);
+        setCopyStatus('failed');
       });
   }, [markdown]);
 
@@ -114,8 +147,18 @@ export function PrepareSheet({ sheet, documentName, flagged }: PrepareSheetProps
         <Button onClick={download}>{t('prepare.download')}</Button>
       </div>
 
-      <p id={statusId} aria-live="polite" className="min-h-5 text-sm text-low">
-        {copied ? t('prepare.copied') : ''}
+      <p
+        id={statusId}
+        aria-live="polite"
+        className={
+          copyStatus === 'failed' ? 'min-h-5 text-sm text-high' : 'min-h-5 text-sm text-low'
+        }
+      >
+        {copyStatus === 'idle' ? null : (
+          <span key={copyCount}>
+            {copyStatus === 'copied' ? t('prepare.copied') : t('prepare.copyFailed')}
+          </span>
+        )}
       </p>
 
       {SECTIONS.map(([key, headingKey]) => {
@@ -127,8 +170,10 @@ export function PrepareSheet({ sheet, documentName, flagged }: PrepareSheetProps
               {t(headingKey)}
             </h3>
             <ul className="mt-2 flex flex-col gap-2">
-              {items.map((item) => (
-                <li key={item}>
+              {items.map((item, index) => (
+                // Index as part of the key: the model can repeat an item, and duplicate keys
+                // make React drop or merge list rows.
+                <li key={`${String(index)}-${item}`}>
                   <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
                     <input type="checkbox" className="mt-1 size-4" />
                     <span>{item}</span>

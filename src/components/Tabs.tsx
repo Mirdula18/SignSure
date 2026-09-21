@@ -17,6 +17,11 @@ export interface TabDefinition<Id extends string> {
   label: string;
   /** Optional count shown beside the label, e.g. the number of red flags. */
   badge?: number;
+  /**
+   * What the count means, for screen readers. Without it the tab is announced as "Overview3",
+   * a number with no context, run into the word before it.
+   */
+  badgeLabel?: string;
   disabled?: boolean;
 }
 
@@ -135,9 +140,17 @@ export function Tabs<Id extends string>({
             >
               {tab.label}
               {tab.badge === undefined || tab.badge === 0 ? null : (
-                <span className="ms-2 rounded-full bg-raised px-1.5 text-xs text-ink">
-                  {tab.badge}
-                </span>
+                <>
+                  <span
+                    aria-hidden={tab.badgeLabel === undefined ? undefined : true}
+                    className="ms-2 rounded-full bg-raised px-1.5 text-xs text-ink"
+                  >
+                    {tab.badge}
+                  </span>
+                  {tab.badgeLabel === undefined ? null : (
+                    <span className="sr-only">, {tab.badgeLabel}</span>
+                  )}
+                </>
               )}
             </button>
           );

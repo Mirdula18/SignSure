@@ -75,12 +75,21 @@ export function LensPicker({
                   toggle(lens);
                 }}
               />
-              <label htmlFor={`${headingId}-${lens}`} className="cursor-pointer">
-                <span className="block font-medium text-ink">{title}</span>
-                <span id={`${headingId}-${lens}-hint`} className="block text-xs text-muted">
+              {/*
+                The hint sits beside the label, not inside it. Inside, it became part of the
+                checkbox's name as well as its description, so a screen reader read it twice.
+              */}
+              <div>
+                <label
+                  htmlFor={`${headingId}-${lens}`}
+                  className="block cursor-pointer font-medium text-ink"
+                >
+                  {title}
+                </label>
+                <p id={`${headingId}-${lens}-hint`} className="text-xs text-muted">
                   {hint}
-                </span>
-              </label>
+                </p>
+              </div>
             </div>
           );
         })}

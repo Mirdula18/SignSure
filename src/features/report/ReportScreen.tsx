@@ -208,7 +208,12 @@ export function ReportScreen() {
     ).length ?? 0;
 
   const tabs: TabDefinition<TabId>[] = [
-    { id: 'overview', label: t('report.tab.overview'), badge: redFlagCount },
+    {
+      id: 'overview',
+      label: t('report.tab.overview'),
+      badge: redFlagCount,
+      badgeLabel: t('report.highRiskCount', { count: redFlagCount }),
+    },
     { id: 'clauses', label: t('report.tab.clauses') },
     { id: 'ask', label: t('report.tab.ask') },
     { id: 'compare', label: t('report.tab.compare') },

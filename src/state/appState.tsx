@@ -42,6 +42,14 @@ export interface AppState {
   document: ParsedDocument | null;
   lenses: Lens[];
   session: { token: string; expiresAt: number } | null;
+  /**
+   * Whether a session is still being obtained.
+   *
+   * Needed because the reader can reach "Analyse" before Turnstile has finished: without this
+   * the report cannot tell "no token yet" from "no token ever", and would either spin forever
+   * or fail on a race it should simply have waited out.
+   */
+  sessionStatus: 'pending' | 'ready' | 'failed';
 
   analysis: AnalysisResult | null;
   analysisStatus: AsyncStatus;
@@ -67,6 +75,7 @@ export const initialState: AppState = {
   document: null,
   lenses: [],
   session: null,
+  sessionStatus: 'pending',
   analysis: null,
   analysisStatus: 'idle',
   qa: [],
@@ -80,6 +89,7 @@ export const initialState: AppState = {
 
 export type AppAction =
   | { type: 'sessionReady'; session: { token: string; expiresAt: number } }
+  | { type: 'sessionFailed' }
   | { type: 'documentParsed'; document: ParsedDocument }
   | { type: 'lensesChosen'; lenses: Lens[] }
   | { type: 'analysisStarted' }
@@ -101,7 +111,10 @@ export type AppAction =
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'sessionReady':
-      return { ...state, session: action.session };
+      return { ...state, session: action.session, sessionStatus: 'ready' };
+
+    case 'sessionFailed':
+      return { ...state, sessionStatus: 'failed' };
 
     case 'documentParsed':
       // A new document invalidates everything derived from the old one, so the reducer resets
@@ -109,6 +122,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...initialState,
         session: state.session,
+        sessionStatus: state.sessionStatus,
         lenses: state.lenses,
         document: action.document,
         stage: 'lenses',
@@ -178,7 +192,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'clearEverything':
       // Keeps the session token: the user is clearing their document, not asking to re-solve a
       // challenge. Everything derived from the document goes.
-      return { ...initialState, session: state.session };
+      return { ...initialState, session: state.session, sessionStatus: state.sessionStatus };
   }
 }
 

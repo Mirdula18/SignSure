@@ -161,11 +161,15 @@ export function pagesFunctions(): Plugin {
     },
     async configurePreviewServer(server) {
       // `vite preview` has no module runner, so spin up a headless one just for functions/.
+      // `noDiscovery` matters: without it this server crawls index.html looking for dependencies
+      // to pre-bundle, which it cannot resolve because it is not loading the app's config.
+      // Nothing under functions/ needs pre-bundling anyway - it is all source.
       loader = await createServer({
         configFile: false,
         server: { middlewareMode: true, hmr: false },
         appType: 'custom',
-        resolve: { alias: { '@shared': new URL('../shared', import.meta.url).pathname } },
+        optimizeDeps: { noDiscovery: true, include: [] },
+        logLevel: 'warn',
       });
       ownLoader = true;
       server.middlewares.use((req, res, next) => void handle(req, res, next));

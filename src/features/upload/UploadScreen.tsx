@@ -2,7 +2,7 @@ import { useCallback, useId, useState } from 'react';
 import { LIMITS } from '@shared/limits';
 import { Button } from '@/components/Button';
 import { Dropzone } from './Dropzone';
-import { TurnstileWidget } from './TurnstileWidget';
+import { TurnstileWidget, type TurnstileState } from './TurnstileWidget';
 import { parseFile, parseText, type ParseFailureReason } from '@/features/parsing/parseDocument';
 import { SAMPLE_LABEL, SAMPLE_OFFER_LETTER } from '@/sample/offerLetter';
 import { useAppState } from '@/state/appState';
@@ -48,9 +48,18 @@ export function UploadScreen() {
           dispatch({ type: 'sessionReady', session });
         })
         .catch(() => {
-          // The upload screen stays usable without a session: parsing is local, and the token
-          // is only needed once the user asks for an analysis.
+          // The upload screen stays usable: parsing is local, and the token is only needed once
+          // the reader asks for an analysis. Recording the failure means that request can say so
+          // immediately rather than waiting for a session that is never coming.
+          dispatch({ type: 'sessionFailed' });
         });
+    },
+    [dispatch],
+  );
+
+  const handleTurnstileState = useCallback(
+    (turnstileState: TurnstileState) => {
+      if (turnstileState === 'failed') dispatch({ type: 'sessionFailed' });
     },
     [dispatch],
   );
@@ -160,7 +169,9 @@ export function UploadScreen() {
         </div>
       )}
 
-      {state.session === null ? <TurnstileWidget onToken={handleToken} /> : null}
+      {state.session === null ? (
+        <TurnstileWidget onToken={handleToken} onStateChange={handleTurnstileState} />
+      ) : null}
     </section>
   );
 }

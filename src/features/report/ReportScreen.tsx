@@ -47,13 +47,27 @@ export function ReportScreen() {
 
   /* -------------------------------- analyse -------------------------------- */
 
-  const { analysisStatus, document: parsedDocument, lenses } = state;
+  const { analysisStatus, document: parsedDocument, lenses, sessionStatus } = state;
 
   useEffect(() => {
     // Read the clauses from state inside the effect rather than closing over the array derived
     // during render: that array is a new reference every render and would restart the request.
     const documentClauses = parsedDocument?.clauses;
-    if (analysisStatus !== 'loading' || token === null || !documentClauses?.length) return;
+    if (analysisStatus !== 'loading') return;
+
+    // A reader can reach "Analyse" before the security check has finished, so a missing token
+    // is only an error once that check has actually failed. While it is still pending, do
+    // nothing: this effect runs again as soon as the session lands.
+    if (token === null) {
+      if (sessionStatus === 'failed') {
+        dispatch({ type: 'analysisFailed', code: 'UNAUTHORIZED' });
+      }
+      return;
+    }
+    if (!documentClauses?.length) {
+      dispatch({ type: 'analysisFailed', code: 'INVALID_INPUT' });
+      return;
+    }
 
     const controller = new AbortController();
     analyzeDocument(
@@ -75,7 +89,16 @@ export function ReportScreen() {
     return () => {
       controller.abort();
     };
-  }, [analysisStatus, parsedDocument, lenses, token, language, readingLevel, dispatch]);
+  }, [
+    analysisStatus,
+    parsedDocument,
+    lenses,
+    token,
+    sessionStatus,
+    language,
+    readingLevel,
+    dispatch,
+  ]);
 
   const retry = useCallback(() => {
     dispatch({ type: 'analysisStarted' });
@@ -195,9 +218,9 @@ export function ReportScreen() {
   if (state.analysisStatus === 'loading') {
     return (
       <section aria-labelledby="report-heading" aria-busy="true" className="flex flex-col gap-4">
-        <h2 id="report-heading" className="text-2xl font-semibold text-ink">
+        <h1 id="report-heading" className="text-2xl font-semibold text-ink">
           {t('report.heading')}
-        </h2>
+        </h1>
         <p id={statusId} aria-live="polite" className="text-sm text-muted">
           {t('report.loading')}
         </p>
@@ -213,9 +236,9 @@ export function ReportScreen() {
   if (state.analysisStatus === 'error' || analysis === null) {
     return (
       <section aria-labelledby="report-heading" className="flex flex-col gap-4">
-        <h2 id="report-heading" className="text-2xl font-semibold text-ink">
+        <h1 id="report-heading" className="text-2xl font-semibold text-ink">
           {t('report.heading')}
-        </h2>
+        </h1>
         <div role="alert" className="rounded-lg border border-high bg-high-soft p-4">
           <p className="font-semibold text-high">{t('error.heading')}</p>
           <p className="mt-1 text-sm text-ink">{t(errorKeyFor(state.analysisError))}</p>
@@ -232,9 +255,9 @@ export function ReportScreen() {
   return (
     <section aria-labelledby="report-heading" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="report-heading" className="text-2xl font-semibold text-ink">
+        <h1 id="report-heading" className="text-2xl font-semibold text-ink">
           {t('report.heading')}
-        </h2>
+        </h1>
         <Button
           variant="danger"
           className="no-print"

@@ -48,9 +48,10 @@ export function LensPicker({
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div>
-        <h2 id={headingId} className="text-2xl font-semibold text-ink">
+        {/* The page heading for this step: there is nothing above it on the screen. */}
+        <h1 id={headingId} className="text-2xl font-semibold text-ink">
           {t('lenses.heading')}
-        </h2>
+        </h1>
         <p className="prose-measure mt-2 text-sm text-muted">{t('lenses.intro')}</p>
       </div>
 

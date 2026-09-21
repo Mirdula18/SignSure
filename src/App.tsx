@@ -67,7 +67,6 @@ export default function App() {
 
         {state.stage === 'lenses' ? (
           <>
-            <h1 className="sr-only">{t('lenses.heading')}</h1>
             <p className="mb-6 text-sm text-muted">
               {state.document?.pageCount === null || state.document === null
                 ? t('upload.parsedNoPages', { clauses: state.document?.clauses.length ?? 0 })
@@ -86,12 +85,7 @@ export default function App() {
           </>
         ) : null}
 
-        {state.stage === 'report' ? (
-          <>
-            <h1 className="sr-only">{t('report.heading')}</h1>
-            <ReportScreen />
-          </>
-        ) : null}
+        {state.stage === 'report' ? <ReportScreen /> : null}
 
         {state.stage !== 'upload' ? (
           <p className="no-print mt-10 text-xs text-muted">

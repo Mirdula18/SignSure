@@ -36,6 +36,22 @@ const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render
 
 export type TurnstileState = 'loading' | 'ready' | 'failed';
 
+/** Cloudflare's documented always-passes test site key. Public, and paired with a test secret. */
+const TEST_SITE_KEY = '1x00000000000000000000AA';
+
+/**
+ * The widget's site key.
+ *
+ * Falls back to Cloudflare's test key in development only, so `npm run dev` works from a fresh
+ * clone with no setup. A production build with no key configured deliberately does *not* fall
+ * back: silently accepting every visitor would turn the control off without anyone noticing.
+ */
+function resolveSiteKey(): string | null {
+  const configured: unknown = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  if (typeof configured === 'string' && configured.length > 0) return configured;
+  return import.meta.env.DEV ? TEST_SITE_KEY : null;
+}
+
 export interface TurnstileWidgetProps {
   onToken: (token: string) => void;
   onStateChange?: (state: TurnstileState) => void;
@@ -75,7 +91,7 @@ export function TurnstileWidget({ onToken, onStateChange }: TurnstileWidgetProps
   const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<TurnstileState>('loading');
-  const siteKey: unknown = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  const siteKey = resolveSiteKey();
 
   // The callbacks are held in refs so that a parent re-render does not tear down and re-create
   // the widget - which would ask the visitor to pass the check again for no reason. They are
@@ -101,7 +117,7 @@ export function TurnstileWidget({ onToken, onStateChange }: TurnstileWidgetProps
       stateChangeRef.current?.(next);
     };
 
-    if (typeof siteKey !== 'string' || siteKey.length === 0) {
+    if (siteKey === null) {
       update('failed');
       return;
     }
@@ -111,7 +127,6 @@ export function TurnstileWidget({ onToken, onStateChange }: TurnstileWidgetProps
         if (cancelled || !containerRef.current || !window.turnstile) return;
         widgetId = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
-          appearance: 'interaction-only',
           theme: 'auto',
           callback: (token) => {
             update('ready');

@@ -36,6 +36,16 @@ function isSiteverifyResponse(value: unknown): value is SiteverifyResponse {
  * The error codes Cloudflare returns are deliberately not surfaced: the caller learns only that
  * verification failed, so a script cannot use our response to tune its attempts.
  */
+/**
+ * Cloudflare's documented always-passes test secret.
+ *
+ * Short-circuiting it is behaviour-preserving: siteverify returns success for this key whatever
+ * token it is given, so the only thing skipped is a network round-trip. That is what makes the
+ * end-to-end suite hermetic, and it is why a production deployment must use a real secret -
+ * this key is "allow everyone" at Cloudflare too, not only here.
+ */
+const ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
+
 export async function verifyTurnstile(
   token: string,
   secretKey: string | undefined,
@@ -44,6 +54,8 @@ export async function verifyTurnstile(
   if (secretKey === undefined || secretKey.length === 0) {
     return { ok: false, reason: 'NOT_CONFIGURED' };
   }
+
+  if (secretKey === ALWAYS_PASS_TEST_SECRET) return { ok: true };
 
   const body = new FormData();
   body.append('secret', secretKey);

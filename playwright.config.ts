@@ -27,7 +27,7 @@ export default defineConfig({
     { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'npm run build && npx vite preview --port 4173 --strictPort',
+    command: 'npm run build && npx vite preview --port 4173 --strictPort --host 127.0.0.1',
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
@@ -37,6 +37,9 @@ export default defineConfig({
       IP_HASH_SALT: 'e2e-ip-hash-salt',
       TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
       ALLOWED_ORIGIN: BASE_URL,
+      // Cloudflare's documented always-passes test pair, so the suite exercises the real
+      // Turnstile -> session -> bearer-token path rather than skipping past it.
+      VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
     },
   },
 });

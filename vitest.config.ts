@@ -23,7 +23,12 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['shared/**/*.test.ts', 'functions/**/*.test.ts', 'tools/**/*.test.ts'],
+          include: [
+            'shared/**/*.test.ts',
+            'functions/**/*.test.ts',
+            'tools/**/*.test.ts',
+            'tests/**/*.test.ts',
+          ],
         },
       },
       {

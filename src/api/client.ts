@@ -84,7 +84,8 @@ async function toApiError(response: Response): Promise<ApiError> {
   const code: ApiErrorCode = parsed.success ? parsed.data.error.code : 'INTERNAL';
   const retryable = parsed.success ? parsed.data.error.retryable : true;
 
-  return Number.isFinite(retryAfter)
+  // A negative or missing Retry-After carries no usable instruction, so it is dropped.
+  return Number.isFinite(retryAfter) && retryAfter >= 0
     ? new ApiError(code, retryable, retryAfter)
     : new ApiError(code, retryable);
 }

@@ -91,6 +91,7 @@ export function SideBySide({ clause, evidence, children }: SideBySideProps) {
             start={evidence.start}
             end={evidence.end}
             label={t('verify.verified')}
+            endLabel={t('highlight.end')}
           />
         </blockquote>
       </section>

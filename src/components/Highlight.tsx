@@ -18,9 +18,14 @@ export interface HighlightProps {
   end?: number | undefined;
   /** Announced to screen readers so the highlight is not a purely visual cue. */
   label?: string;
+  /**
+   * Announced where the highlight ends. Passed in rather than written here, because this
+   * component has no access to the translator and a Hindi reader should not hear English.
+   */
+  endLabel?: string;
 }
 
-export function Highlight({ text, start, end, label }: HighlightProps): ReactElement {
+export function Highlight({ text, start, end, label, endLabel }: HighlightProps): ReactElement {
   const hasRange =
     typeof start === 'number' &&
     typeof end === 'number' &&
@@ -41,7 +46,7 @@ export function Highlight({ text, start, end, label }: HighlightProps): ReactEle
       <mark className="rounded-xs">
         {label === undefined ? null : <span className="sr-only">{label}: </span>}
         {marked}
-        {label === undefined ? null : <span className="sr-only"> (end of highlight)</span>}
+        {endLabel === undefined ? null : <span className="sr-only"> ({endLabel})</span>}
       </mark>
       {after}
     </Fragment>

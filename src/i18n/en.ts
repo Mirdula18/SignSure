@@ -120,6 +120,8 @@ export const en = {
 
   'report.verifiedCount':
     '{verified} of {total} explanations are backed by a quote we checked against your document.',
+  'report.partial':
+    'Part of this document could not be analysed, so this report may be missing some clauses. Try again, or check the whole document yourself.',
   'report.unverifiedNote':
     '{count} could not be checked. Those are listed separately and are not counted as red flags.',
 
@@ -235,6 +237,7 @@ export const en = {
   'compare.impact.WORSE_FOR_EMPLOYEE': 'Worse for you',
   'compare.impact.NEUTRAL': 'No real difference',
   'compare.impact.UNCLEAR': 'Unclear',
+  'compare.changeColumn': 'Change',
   'compare.versionA': 'Original',
   'compare.versionB': 'Revised',
   'compare.tableLabel': 'Changes between the two versions',
@@ -253,6 +256,14 @@ export const en = {
   'prepare.print': 'Print',
   'prepare.copy': 'Copy',
   'prepare.copied': 'Copied to your clipboard.',
+  'prepare.copyFailed': 'Could not copy automatically. Please use Download or Print instead.',
+  'prepare.exportTitle': 'Preparing to discuss your offer',
+  'prepare.exportDocument': 'Document: {name}',
+  'prepare.exportFlagged': 'Clauses worth a close look',
+  'prepare.exportFooter':
+    'Prepared with SignSure. This is information, not legal advice. Please confirm anything important with a qualified advocate.',
+  'highlight.end': 'end of highlight',
+  'report.highRiskCount': '{count} high-risk',
   'prepare.download': 'Download as .md',
   'prepare.checkboxHint': 'Ticking a box is just for you. Nothing is saved.',
 
@@ -275,6 +286,26 @@ export const en = {
   'readAloud.unsupported': 'Your browser cannot read text aloud.',
   'glossary.open': 'What does {term} mean?',
   'glossary.close': 'Close',
+  'glossary.liquidatedDamages.definition':
+    'A sum the contract says you will pay if you break a term, such as leaving early. Courts in India generally award only a reasonable amount, not automatically the full figure.',
+  'glossary.arbitration.definition':
+    'A private way of settling a dispute outside court, decided by an arbitrator instead of a judge. It can be costly, and the contract may say who picks the arbitrator.',
+  'glossary.noticePeriod.definition':
+    'How long you, or the company, must wait between saying the job will end and the last working day.',
+  'glossary.ctc.definition':
+    'Cost to company: everything the employer spends on you in a year, including contributions and benefits. Your monthly in-hand pay is lower than CTC divided by twelve.',
+  'glossary.indemnity.definition':
+    "A promise to cover someone else's losses. If you indemnify the company, you may have to pay for losses it suffers because of something you did.",
+  'glossary.probation.definition':
+    'A trial period at the start of a job, often with shorter notice and fewer benefits, which ends when you are confirmed in writing.',
+  'glossary.nonCompete.definition':
+    'A term that tries to stop you working for, or starting, a competing business. In India, restrictions that apply after you leave are generally treated very differently from ones that apply while you work there.',
+  'glossary.gratuity.definition':
+    'A lump sum paid when you leave after a qualifying period of service, set by law rather than chosen by the employer.',
+  'glossary.providentFund.definition':
+    'PF: a retirement savings scheme. A share of your wages goes into it each month, and the employer adds a matching contribution.',
+  'glossary.jurisdiction.definition':
+    'Which courts, in which city, would hear a dispute about this contract.',
 
   /* -------------------------------------- turnstile ------------------------------ */
   'turnstile.label': 'Security check',

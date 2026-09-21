@@ -137,7 +137,13 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
             {t('overview.unverifiedHeading')}
           </h3>
           <p className="prose-measure mt-1 text-sm text-muted">{t('overview.unverifiedIntro')}</p>
-          <ol className="mt-3 flex list-none flex-col gap-4 p-0 opacity-80">
+          {/*
+            Set apart with a dashed rule rather than reduced opacity. Opacity is the obvious way
+            to say "trust this less", and it quietly drags every colour inside toward the
+            background until the text no longer meets contrast - which is the one group of
+            readers who most need this caveat to be legible.
+          */}
+          <ol className="mt-3 flex list-none flex-col gap-4 rounded-xl border border-dashed border-line-strong p-3">
             {unverifiedFindings.map((finding) => {
               const clause = clauseById(finding.clauseId);
               if (!clause) return null;

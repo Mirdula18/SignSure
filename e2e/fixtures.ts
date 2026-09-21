@@ -39,10 +39,17 @@ export async function stubTurnstile(page: Page): Promise<void> {
 
 let nextClient = 0;
 
-/** A distinct, stable-per-test client address so rate-limit budgets do not overlap. */
+/**
+ * A client address no other test in the run will use, so rate-limit budgets never overlap.
+ *
+ * The counter alone is not enough: each Playwright worker is its own process with its own
+ * counter, so two workers would both hand out the first address. The worker index goes into the
+ * address as well.
+ */
 export function nextClientIp(): string {
   nextClient += 1;
-  return `203.0.113.${String(nextClient % 250)}`;
+  const worker = base.info().workerIndex % 250;
+  return `10.${String(worker)}.${String(Math.floor(nextClient / 250) % 250)}.${String((nextClient % 250) + 1)}`;
 }
 
 export const test = base.extend({

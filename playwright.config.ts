@@ -29,7 +29,9 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npx vite preview --port 4173 --strictPort --host 127.0.0.1',
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse: a server left over from an earlier run serves an old build with old env, and
+    // the resulting failures look like application bugs. Building fresh costs a few seconds.
+    reuseExistingServer: false,
     timeout: 180_000,
     env: {
       MOCK_GEMINI: 'true',

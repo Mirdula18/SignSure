@@ -41,12 +41,19 @@ describe('GET /api/health', () => {
 
   it('never returns a secret value, only whether it is present', async () => {
     const secret = 'AIzaSyFAKEFAKEFAKEFAKEFAKEFAKEFAKE1234';
-    const { body } = await call({ GEMINI_API_KEY: secret, SESSION_SECRET: 'super-secret' });
+    const sessionSecret = 'super-secret-session-key-that-is-long-enough';
+    const { body } = await call({ GEMINI_API_KEY: secret, SESSION_SECRET: sessionSecret });
     const serialised = JSON.stringify(body);
     expect(serialised).not.toContain(secret);
-    expect(serialised).not.toContain('super-secret');
+    expect(serialised).not.toContain(sessionSecret);
     expect(body.configured.gemini).toBe(true);
     expect(body.configured.session).toBe(true);
+  });
+
+  it('reports a session secret too short to be safe as not configured', async () => {
+    // The API refuses to issue or accept tokens with it, so health must not say all is well.
+    const { body } = await call({ SESSION_SECRET: 'short' });
+    expect(body.configured.session).toBe(false);
   });
 
   it('is never cached', async () => {

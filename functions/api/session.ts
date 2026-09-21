@@ -1,5 +1,5 @@
 import { sessionRequestSchema } from '../../shared/schemas';
-import type { Env } from '../lib/env';
+import { sessionSecret, type Env } from '../lib/env';
 import { bearerToken, clientIp, errorResponse, json, parseBody } from '../lib/http';
 import { checkRateLimit, rateLimitHeaders } from '../lib/ratelimit';
 import { hashIp, issueSession, verifySession } from '../lib/session';
@@ -25,8 +25,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const body = await parseBody(request, sessionRequestSchema);
   if (!body.ok) return body.response;
 
-  const secret = env.SESSION_SECRET;
-  if (secret === undefined || secret.length < 32) {
+  const secret = sessionSecret(env);
+  if (secret === null) {
     // Refuse to issue a token a short secret could let someone forge. `/api/health` reports
     // this so a deployer can see it without the endpoint explaining the problem to a caller.
     return errorResponse('INTERNAL');
@@ -34,9 +34,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const turnstile = await verifyTurnstile(body.data.turnstileToken, env.TURNSTILE_SECRET_KEY, ip);
   if (!turnstile.ok) {
-    return turnstile.reason === 'UNREACHABLE'
-      ? errorResponse('UPSTREAM_TIMEOUT', rateLimitHeaders(rate))
-      : errorResponse('UNAUTHORIZED', rateLimitHeaders(rate));
+    // Each failure gets the message that is true for it: a missing server key is our fault, not
+    // an expired session, and telling the visitor to reload would send them round in circles.
+    const code =
+      turnstile.reason === 'UNREACHABLE'
+        ? 'UPSTREAM_TIMEOUT'
+        : turnstile.reason === 'NOT_CONFIGURED'
+          ? 'INTERNAL'
+          : 'UNAUTHORIZED';
+    return errorResponse(code, rateLimitHeaders(rate));
   }
 
   const session = await issueSession(secret, ipHash);
@@ -53,10 +59,8 @@ export async function requireSession(
   request: Request,
   env: Env,
 ): Promise<{ ok: true; ipHash: string } | { ok: false; response: Response }> {
-  const secret = env.SESSION_SECRET;
-  if (secret === undefined || secret.length === 0) {
-    return { ok: false, response: errorResponse('INTERNAL') };
-  }
+  const secret = sessionSecret(env);
+  if (secret === null) return { ok: false, response: errorResponse('INTERNAL') };
 
   const token = bearerToken(request);
   if (token === null) return { ok: false, response: errorResponse('UNAUTHORIZED') };

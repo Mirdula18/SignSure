@@ -28,6 +28,21 @@ export interface Env {
 /** Fallback so a missing or blank var never takes the API down. */
 const DEFAULT_MODEL = 'gemini-3.8-flash';
 
+/** HMAC-SHA256 keys shorter than this are guessable enough to forge a token with. */
+const MIN_SESSION_SECRET_LENGTH = 32;
+
+/**
+ * The session secret, or null when it is missing or too short to be safe.
+ *
+ * One definition used by the route that issues tokens, the guard that checks them, and the
+ * health check that reports on them. When the issuing route alone refused a short secret, the
+ * refusal protected nothing: a forger never goes through the issuing route.
+ */
+export function sessionSecret(env: Env): string | null {
+  const secret = env.SESSION_SECRET;
+  return secret !== undefined && secret.length >= MIN_SESSION_SECRET_LENGTH ? secret : null;
+}
+
 /** True when the API should answer from fixtures instead of calling Gemini. */
 export function isMockMode(env: Env): boolean {
   return env.MOCK_GEMINI === 'true';

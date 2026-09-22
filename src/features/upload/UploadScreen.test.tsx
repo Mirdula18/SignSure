@@ -1,35 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as ClientModule from '@/api/client';
+import { describe, expect, it, vi } from 'vitest';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import { UploadScreen } from './UploadScreen';
 import { Dropzone } from './Dropzone';
-import { TurnstileWidget, type TurnstileState } from './TurnstileWidget';
 import { renderWithPreferences, renderWithProviders } from '@/test/factories';
 import { useAppState } from '@/state/appState';
-
-const api = vi.hoisted(() => ({ createSession: vi.fn() }));
-
-vi.mock('@/api/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof ClientModule>();
-  return { ...actual, ...api };
-});
-
-type RenderOptions = Parameters<NonNullable<Window['turnstile']>['render']>[1];
-
-/** A stand-in for Cloudflare's widget that lets each test decide how the check goes. */
-function installTurnstile(behaviour: (options: RenderOptions) => void) {
-  const remove = vi.fn();
-  window.turnstile = {
-    render: (_container, options) => {
-      behaviour(options);
-      return 'widget-1';
-    },
-    remove,
-  };
-  return { remove };
-}
 
 /** Shows the reducer state the screen produced, so tests can assert on what it dispatched. */
 function StateProbe() {
@@ -41,19 +17,8 @@ function StateProbe() {
   );
 }
 
-beforeEach(() => {
-  api.createSession.mockReset();
-  vi.stubEnv('VITE_TURNSTILE_SITE_KEY', 'test-site-key');
-});
-
-afterEach(() => {
-  delete window.turnstile;
-  vi.unstubAllEnvs();
-});
-
 describe('UploadScreen', () => {
   it('reads the built-in sample without any file', async () => {
-    installTurnstile(() => undefined);
     const user = userEvent.setup();
     renderWithProviders(
       <>
@@ -65,14 +30,18 @@ describe('UploadScreen', () => {
     expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|sample');
   });
 
+  it('does not start the security check, so reading the home page never contacts Cloudflare', () => {
+    renderWithProviders(<UploadScreen />);
+    expect(document.querySelector('script[src*="challenges.cloudflare.com"]')).toBeNull();
+    expect(screen.queryByText(/quick automatic check/i)).not.toBeInTheDocument();
+  });
+
   it('says clearly that the sample is made up', () => {
-    installTurnstile(() => undefined);
     renderWithProviders(<UploadScreen />);
     expect(screen.getByText(/synthetic - not a real company or person/i)).toBeInTheDocument();
   });
 
   it('reads pasted text', async () => {
-    installTurnstile(() => undefined);
     const user = userEvent.setup();
     renderWithProviders(
       <>
@@ -93,7 +62,6 @@ describe('UploadScreen', () => {
   });
 
   it('marks which input mode is active for assistive technology', async () => {
-    installTurnstile(() => undefined);
     const user = userEvent.setup();
     renderWithProviders(<UploadScreen />);
     expect(screen.getByRole('button', { name: /upload a file/i })).toHaveAttribute(
@@ -108,7 +76,6 @@ describe('UploadScreen', () => {
   });
 
   it('explains a rejected file in words that say how to fix it', async () => {
-    installTurnstile(() => undefined);
     const user = userEvent.setup({ applyAccept: false });
     renderWithProviders(<UploadScreen />);
     await user.upload(
@@ -121,7 +88,6 @@ describe('UploadScreen', () => {
   });
 
   it('reads an uploaded text file', async () => {
-    installTurnstile(() => undefined);
     const user = userEvent.setup();
     renderWithProviders(
       <>
@@ -140,56 +106,7 @@ describe('UploadScreen', () => {
     });
   });
 
-  it('records a session once the security check passes', async () => {
-    installTurnstile((options) => {
-      options.callback('turnstile-token');
-    });
-    api.createSession.mockResolvedValue({ token: 'session', expiresAt: 1 });
-    renderWithProviders(
-      <>
-        <UploadScreen />
-        <StateProbe />
-      </>,
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText('state')).toHaveTextContent('upload|ready|none');
-    });
-    expect(api.createSession).toHaveBeenCalledWith('turnstile-token');
-  });
-
-  it('records a failed session so a later analysis can say so immediately', async () => {
-    installTurnstile((options) => {
-      options.callback('turnstile-token');
-    });
-    api.createSession.mockRejectedValue(new Error('nope'));
-    renderWithProviders(
-      <>
-        <UploadScreen />
-        <StateProbe />
-      </>,
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText('state')).toHaveTextContent('upload|failed|none');
-    });
-  });
-
-  it('records a failed security check', async () => {
-    installTurnstile((options) => {
-      options['error-callback']?.();
-    });
-    renderWithProviders(
-      <>
-        <UploadScreen />
-        <StateProbe />
-      </>,
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText('state')).toHaveTextContent('upload|failed|none');
-    });
-  });
-
   it('has no axe violations', async () => {
-    installTurnstile(() => undefined);
     const { container } = renderWithProviders(<UploadScreen />);
     await expect(axe(container)).resolves.toHaveNoViolations();
   });
@@ -268,89 +185,4 @@ describe('Dropzone', () => {
       screen.getByLabelText(/choose a file/i, { selector: 'input' }),
     ).toHaveAccessibleDescription(/PDF, Word \(\.docx\) or plain text, up to 10 MB/);
   });
-});
-
-describe('TurnstileWidget', () => {
-  it('hands over the token when the check passes', async () => {
-    installTurnstile((options) => {
-      options.callback('abc');
-    });
-    const states: TurnstileState[] = [];
-    const { onToken } = renderWithPreferencesWidget((state) => states.push(state));
-    await waitFor(() => {
-      expect(onToken).toHaveBeenCalledWith('abc');
-    });
-    expect(states).toContain('ready');
-  });
-
-  it('reports failure when the widget errors, with a visible explanation', async () => {
-    installTurnstile((options) => {
-      options['error-callback']?.();
-    });
-    renderWithPreferencesWidget();
-    expect(await screen.findByText(/security check did not pass/i)).toBeInTheDocument();
-  });
-
-  it('goes back to waiting when a token expires', async () => {
-    const states: TurnstileState[] = [];
-    installTurnstile((options) => {
-      options.callback('first');
-      options['expired-callback']?.();
-    });
-    renderWithPreferencesWidget((state) => states.push(state));
-    await waitFor(() => {
-      expect(states).toEqual(['ready', 'loading']);
-    });
-  });
-
-  it('fails rather than silently waving visitors through when a production build has no key', async () => {
-    vi.stubEnv('VITE_TURNSTILE_SITE_KEY', '');
-    vi.stubEnv('DEV', false);
-    const states: TurnstileState[] = [];
-    renderWithPreferencesWidget((state) => states.push(state));
-    await waitFor(() => {
-      expect(states).toContain('failed');
-    });
-  });
-
-  it('loads the Cloudflare script once when it is not already on the page', async () => {
-    const states: TurnstileState[] = [];
-    const { unmount } = renderWithPreferencesWidget((state) => states.push(state));
-    const script = document.querySelector<HTMLScriptElement>(
-      'script[src*="challenges.cloudflare.com"]',
-    );
-    expect(script).not.toBeNull();
-
-    // Simulate the script failing to load, as it would offline.
-    act(() => {
-      script?.dispatchEvent(new Event('error'));
-    });
-    await waitFor(() => {
-      expect(states).toContain('failed');
-    });
-    unmount();
-    script?.remove();
-  });
-
-  it('removes the widget when it goes away', async () => {
-    const { remove } = installTurnstile(() => undefined);
-    const { unmount } = renderWithPreferencesWidget();
-    await waitFor(() => {
-      expect(screen.getByText(/quick automatic check/i)).toBeInTheDocument();
-    });
-    unmount();
-    expect(remove).toHaveBeenCalledWith('widget-1');
-  });
-
-  // The widget uses `t()`, so it needs the preferences provider like every other component.
-  function renderWithPreferencesWidget(onStateChange?: (state: TurnstileState) => void) {
-    const onToken = vi.fn();
-    const utils = renderWithPreferences(
-      <TurnstileWidget
-        onToken={onToken}
-        {...(onStateChange === undefined ? {} : { onStateChange })}
-      />,
-    );
-    return { ...utils, onToken };
-  }
 });

@@ -78,6 +78,7 @@ export interface IssuedSession {
   expiresAt: number;
 }
 
+/** Signs a thirty-minute session bound to the caller's hashed IP (see docs/SECURITY.md 3.2). */
 export async function issueSession(
   secret: string,
   ipHash: string,

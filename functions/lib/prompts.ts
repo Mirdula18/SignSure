@@ -123,6 +123,7 @@ Task: For each clause that matters to an employee, produce a finding.
   Do not infer an employer or a salary that is not written down.`;
 }
 
+/** The document, and nothing else: all instructions live in the system prompt. */
 export function analyzeUserPrompt(clauses: readonly Clause[]): string {
   return documentBlock(clauses);
 }
@@ -192,6 +193,12 @@ export interface ComparePair {
   b: Clause | null;
 }
 
+/**
+ * The pairs our code matched, each side sanitised and fenced.
+ *
+ * The model never decides which clauses correspond; it only explains pairs `shared/compare.ts`
+ * already made, so a pairing mistake cannot be hidden behind fluent prose.
+ */
 export function compareUserPrompt(pairs: readonly ComparePair[]): string {
   const blocks = pairs.map((pair) => {
     const a = pair.a === null ? '(absent)' : sanitiseForPrompt(pair.a.text);
@@ -220,6 +227,11 @@ export interface PreparePromptInput {
   lenses: readonly Lens[];
 }
 
+/**
+ * What the preparation sheet is built from: the report's findings, the reviewed rule questions it
+ * must not repeat, and the questions the document could not answer, then the clauses inside the
+ * usual fence. Everything that came back through the browser is sanitised as untrusted.
+ */
 export function prepareUserPrompt(input: PreparePromptInput): string {
   const findings = input.findings
     .map(

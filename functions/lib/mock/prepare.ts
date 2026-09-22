@@ -52,6 +52,7 @@ const SUGGESTIONS: readonly Suggestion[] = [
   },
 ];
 
+/** A preparation sheet keyed off the topics the clauses in the prompt actually mention. */
 export function mockPrepare(userPrompt: string): Record<string, unknown> {
   const text = clausesFromPrompt(userPrompt)
     .map((clause) => clause.text)

@@ -100,6 +100,7 @@ function findClause(clauses: readonly PromptClause[], pattern: RegExp): PromptCl
   return clauses.find((clause) => pattern.test(clause.text));
 }
 
+/** Answers a few common questions from the clauses in the prompt, and refuses the rest. */
 export function mockAsk(userPrompt: string): Record<string, unknown> {
   const clauses = clausesFromPrompt(userPrompt);
   const question = questionFromPrompt(userPrompt);

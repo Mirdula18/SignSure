@@ -15,6 +15,7 @@ const JSON_HEADERS: Readonly<Record<string, string>> = {
   'cache-control': 'no-store',
 };
 
+/** A JSON response that is never cached: every API answer is about one person's document. */
 export function json(body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,6 +62,12 @@ const RETRYABLE: ReadonlySet<ApiErrorCode> = new Set<ApiErrorCode>([
   'INTERNAL',
 ]);
 
+/**
+ * The one error shape every route returns.
+ *
+ * The message is fixed per code, never built from the request or an upstream error, so nothing
+ * the caller sent (or a stack trace about it) can be echoed back.
+ */
 export function errorResponse(code: ApiErrorCode, extraHeaders: HeadersInit = {}): Response {
   return json(
     { error: { code, message: MESSAGE_BY_CODE[code], retryable: RETRYABLE.has(code) } },

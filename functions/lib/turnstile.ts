@@ -27,16 +27,6 @@ function isSiteverifyResponse(value: unknown): value is SiteverifyResponse {
 }
 
 /**
- * Checks a Turnstile token with Cloudflare.
- *
- * Fails **closed**: an unreachable siteverify means no token is issued. Unlike the rate limiter,
- * this is the control that stops unbounded spend, so an outage should block new sessions rather
- * than quietly wave everyone through.
- *
- * The error codes Cloudflare returns are deliberately not surfaced: the caller learns only that
- * verification failed, so a script cannot use our response to tune its attempts.
- */
-/**
  * Cloudflare's documented always-passes test secret.
  *
  * Short-circuiting it is behaviour-preserving: siteverify returns success for this key whatever
@@ -46,6 +36,16 @@ function isSiteverifyResponse(value: unknown): value is SiteverifyResponse {
  */
 const ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
 
+/**
+ * Checks a Turnstile token with Cloudflare.
+ *
+ * Fails **closed**: an unreachable siteverify means no token is issued. Unlike the rate limiter,
+ * this is the control that stops unbounded spend, so an outage should block new sessions rather
+ * than quietly wave everyone through.
+ *
+ * The error codes Cloudflare returns are deliberately not surfaced: the caller learns only that
+ * verification failed, so a script cannot use our response to tune its attempts.
+ */
 export async function verifyTurnstile(
   token: string,
   secretKey: string | undefined,

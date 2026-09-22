@@ -34,6 +34,7 @@ function impactOf(a: string, b: string): string {
   return 'NEUTRAL';
 }
 
+/** Describes each pair in the prompt, judging impact by comparing the figures on each side. */
 export function mockCompare(userPrompt: string): Record<string, unknown> {
   const changes: Record<string, unknown>[] = [];
 

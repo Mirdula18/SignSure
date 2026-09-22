@@ -6,7 +6,7 @@ import { axe } from 'vitest-axe';
 import App from '@/App';
 import { AppStateProvider } from '@/state/appState';
 import { PreferencesProvider } from '@/state/preferences';
-import { clause, parsedDocument, renderWithProviders } from '@/test/factories';
+import { analysis, clause, parsedDocument, renderWithProviders } from '@/test/factories';
 import {
   installTurnstile,
   uninstallTurnstile,
@@ -25,6 +25,9 @@ afterEach(() => {
   api.createSession.mockReset();
   api.analyzeDocument.mockReset();
 });
+
+/** The report is loaded on demand; a cold module cache can take longer than the default 1 s. */
+const LAZY_WAIT = { timeout: 5_000 };
 
 function renderApp() {
   return render(
@@ -119,7 +122,7 @@ describe('App stages', () => {
     // The report's code loads on demand. No session in a unit test, so once it arrives the
     // report waits in its busy state for one.
     expect(
-      await screen.findByRole('heading', { level: 1, name: /your report/i }),
+      await screen.findByRole('heading', { level: 1, name: /your report/i }, LAZY_WAIT),
     ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /your report/i })).toHaveAttribute(
       'aria-busy',
@@ -165,7 +168,7 @@ describe('App security check', () => {
 
     await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
     await user.click(screen.getByRole('button', { name: /analyse my document/i }));
-    await screen.findByRole('heading', { level: 1, name: /your report/i });
+    await screen.findByRole('heading', { level: 1, name: /your report/i }, LAZY_WAIT);
 
     // Same widget, never removed, across the move from concerns to report.
     expect(renderWidget).toHaveBeenCalledTimes(1);
@@ -182,5 +185,76 @@ describe('App security check', () => {
       );
     });
     expect(api.createSession).toHaveBeenCalledWith('turnstile-token');
+  });
+});
+
+describe('App focus and announcements', () => {
+  it('moves focus to each new screen heading, so keyboard users are not left at the top', async () => {
+    installTurnstile();
+    api.analyzeDocument.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+    });
+    expect(document.activeElement).toHaveTextContent(/what are you most worried about/i);
+
+    await user.click(screen.getByRole('button', { name: /analyse my document/i }));
+    const report = await screen.findByRole(
+      'heading',
+      { level: 1, name: /your report/i },
+      LAZY_WAIT,
+    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(report);
+    });
+
+    await user.click(screen.getByRole('button', { name: /clear everything/i }));
+    await waitFor(() => {
+      expect(document.activeElement).toHaveTextContent(/understand every clause/i);
+    });
+  });
+
+  it('keeps focus on the report heading when the analysis finishes, and says the report is ready', async () => {
+    installTurnstile((options) => {
+      options.callback('turnstile-token');
+    });
+    api.createSession.mockResolvedValue({ token: 'session-token', expiresAt: 1 });
+    let finish: (value: ReturnType<typeof analysis>) => void = () => undefined;
+    api.analyzeDocument.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
+    await user.click(screen.getByRole('button', { name: /analyse my document/i }));
+    const heading = await screen.findByRole(
+      'heading',
+      { level: 1, name: /your report/i },
+      LAZY_WAIT,
+    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(heading);
+    });
+    expect(screen.queryByText('Your report is ready.')).not.toBeInTheDocument();
+
+    await act(async () => {
+      finish(analysis());
+      await Promise.resolve();
+    });
+    await screen.findByRole('tab', { name: /overview/i });
+    // The same heading element, still focused: the reader has not been moved.
+    expect(document.activeElement).toBe(heading);
+    expect(screen.getByText('Your report is ready.')).toBeInTheDocument();
+  });
+
+  it('does not move focus on first load, so the skip link stays the first stop', () => {
+    renderApp();
+    expect(document.activeElement).toBe(document.body);
   });
 });

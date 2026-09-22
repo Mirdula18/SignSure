@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { Clause } from '@shared/types';
+import { isPresentable } from '@shared/verify';
 import { Button } from '@/components/Button';
 import { Tabs, type TabDefinition } from '@/components/Tabs';
 import { AskPanel } from '@/features/ask/AskPanel';
@@ -24,7 +25,8 @@ import { Overview } from './Overview';
  * Keeping the calls here rather than inside each tab means a tab is a pure view of state it was
  * handed, which is what makes them straightforward to test. Progress is announced through a
  * polite live region and focus is never moved on completion (WCAG 3.2.5): the reader is told
- * the report is ready and decides for themselves when to go to it.
+ * the report is ready (by the region in `App`, which outlives this view) and decides for
+ * themselves when to go to it.
  */
 
 type TabId = 'overview' | 'clauses' | 'ask' | 'compare' | 'prepare';
@@ -178,12 +180,16 @@ export function ReportScreen() {
       lenses: state.lenses,
       language,
       readingLevel,
-      findings: state.analysis.findings.map((finding) => ({
-        clauseId: finding.clauseId,
-        category: finding.category,
-        risk: finding.risk,
-        title: finding.title,
-      })),
+      // Only findings whose quote checked out: their categories decide which reviewed rule
+      // questions the sheet gets, and an unverified claim must not steer that (DECISIONS D21).
+      findings: state.analysis.findings
+        .filter((finding) => isPresentable(finding.evidence))
+        .map((finding) => ({
+          clauseId: finding.clauseId,
+          category: finding.category,
+          risk: finding.risk,
+          title: finding.title,
+        })),
       unansweredQuestions: state.qa
         .filter((entry) => entry.result?.status === 'not_in_document')
         .map((entry) => entry.question),
@@ -220,125 +226,121 @@ export function ReportScreen() {
     { id: 'prepare', label: t('report.tab.prepare') },
   ];
 
-  if (state.analysisStatus === 'loading') {
-    return (
-      <section aria-labelledby="report-heading" aria-busy="true" className="flex flex-col gap-4">
-        <h1 id="report-heading" className="text-2xl font-semibold text-ink">
-          {t('report.heading')}
-        </h1>
-        <p id={statusId} aria-live="polite" className="text-sm text-muted">
-          {t('report.loading')}
-        </p>
-        <div className="flex flex-col gap-3" aria-hidden="true">
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="h-24 animate-pulse rounded-xl bg-raised" />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (state.analysisStatus === 'error' || analysis === null) {
-    return (
-      <section aria-labelledby="report-heading" className="flex flex-col gap-4">
-        <h1 id="report-heading" className="text-2xl font-semibold text-ink">
-          {t('report.heading')}
-        </h1>
-        <div role="alert" className="rounded-lg border border-high bg-high-soft p-4">
-          <p className="font-semibold text-high">{t('error.heading')}</p>
-          <p className="mt-1 text-sm text-ink">{t(errorKeyFor(state.analysisError))}</p>
-        </div>
-        <div>
-          <Button variant="primary" onClick={retry}>
-            {t('report.retry')}
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
+  // One section and one heading for every state, so the heading element survives the move from
+  // loading to the finished report: a reader whose focus is on it keeps their place.
   return (
-    <section aria-labelledby="report-heading" className="flex flex-col gap-6">
+    <section
+      aria-labelledby="report-heading"
+      aria-busy={state.analysisStatus === 'loading'}
+      className="flex flex-col gap-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 id="report-heading" className="text-2xl font-semibold text-ink">
           {t('report.heading')}
         </h1>
-        <Button
-          variant="danger"
-          className="no-print"
-          onClick={() => {
-            dispatch({ type: 'clearEverything' });
-          }}
-        >
-          {t('app.startOver')}
-        </Button>
+        {state.analysisStatus === 'ready' && analysis !== null ? (
+          <Button
+            variant="danger"
+            className="no-print"
+            onClick={() => {
+              dispatch({ type: 'clearEverything' });
+            }}
+          >
+            {t('app.startOver')}
+          </Button>
+        ) : null}
       </div>
 
-      <Tabs tabs={tabs} selected={tab} onSelect={setTab} label={t('report.tabsLabel')}>
-        {tab === 'overview' ? <Overview analysis={analysis} clauseById={clauseById} /> : null}
+      {state.analysisStatus === 'loading' ? (
+        <>
+          <p id={statusId} aria-live="polite" className="text-sm text-muted">
+            {t('report.loading')}
+          </p>
+          <div className="flex flex-col gap-3" aria-hidden="true">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="h-24 animate-pulse rounded-xl bg-raised" />
+            ))}
+          </div>
+        </>
+      ) : state.analysisStatus === 'error' || analysis === null ? (
+        <>
+          <div role="alert" className="rounded-lg border border-high bg-high-soft p-4">
+            <p className="font-semibold text-high">{t('error.heading')}</p>
+            <p className="mt-1 text-sm text-ink">{t(errorKeyFor(state.analysisError))}</p>
+          </div>
+          <div>
+            <Button variant="primary" onClick={retry}>
+              {t('report.retry')}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Tabs tabs={tabs} selected={tab} onSelect={setTab} label={t('report.tabsLabel')}>
+          {tab === 'overview' ? <Overview analysis={analysis} clauseById={clauseById} /> : null}
 
-        {tab === 'clauses' ? (
-          <ClauseList
-            analysis={analysis}
-            clauses={clauses}
-            focusedClauseId={state.focusedClauseId}
-          />
-        ) : null}
-
-        {tab === 'ask' ? (
-          <AskPanel clauses={clauses} onAsk={onAsk} onCitationFollowed={onCitationFollowed} />
-        ) : null}
-
-        {tab === 'compare' ? (
-          <CompareTab
-            result={state.compare}
-            status={state.compareStatus}
-            errorKey={state.compareError === undefined ? null : errorKeyFor(state.compareError)}
-            clausesA={clauses}
-            hasSecondDocument={compareClauses !== null}
-            onSecondDocument={setCompareClauses}
-            onCompare={onCompare}
-          />
-        ) : null}
-
-        {tab === 'prepare' ? (
-          state.prepare === null ? (
-            <div className="flex flex-col gap-4">
-              <p className="prose-measure text-sm text-muted">{t('prepare.intro')}</p>
-              <div>
-                <Button
-                  variant="primary"
-                  disabled={state.prepareStatus === 'loading'}
-                  onClick={onPrepare}
-                >
-                  {t('prepare.build')}
-                </Button>
-              </div>
-              <p aria-live="polite" className="min-h-5 text-sm text-muted">
-                {state.prepareStatus === 'loading' ? t('prepare.building') : ''}
-              </p>
-              {state.prepareStatus === 'error' ? (
-                <p role="alert" className="text-sm text-high">
-                  {t(errorKeyFor(state.prepareError))}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <PrepareSheet
-              sheet={state.prepare}
-              documentName={state.document?.fileName ?? null}
-              flagged={analysis.findings
-                .filter((finding) => finding.risk === 'HIGH')
-                .map((finding) => ({
-                  label: clauseById(finding.clauseId)?.label ?? finding.clauseId,
-                  risk: finding.risk,
-                  title: finding.title,
-                  text: clauseById(finding.clauseId)?.text ?? '',
-                }))}
+          {tab === 'clauses' ? (
+            <ClauseList
+              analysis={analysis}
+              clauses={clauses}
+              focusedClauseId={state.focusedClauseId}
             />
-          )
-        ) : null}
-      </Tabs>
+          ) : null}
+
+          {tab === 'ask' ? (
+            <AskPanel clauses={clauses} onAsk={onAsk} onCitationFollowed={onCitationFollowed} />
+          ) : null}
+
+          {tab === 'compare' ? (
+            <CompareTab
+              result={state.compare}
+              status={state.compareStatus}
+              errorKey={state.compareError === undefined ? null : errorKeyFor(state.compareError)}
+              clausesA={clauses}
+              hasSecondDocument={compareClauses !== null}
+              onSecondDocument={setCompareClauses}
+              onCompare={onCompare}
+            />
+          ) : null}
+
+          {tab === 'prepare' ? (
+            state.prepare === null ? (
+              <div className="flex flex-col gap-4">
+                <p className="prose-measure text-sm text-muted">{t('prepare.intro')}</p>
+                <div>
+                  <Button
+                    variant="primary"
+                    disabled={state.prepareStatus === 'loading'}
+                    onClick={onPrepare}
+                  >
+                    {t('prepare.build')}
+                  </Button>
+                </div>
+                <p aria-live="polite" className="min-h-5 text-sm text-muted">
+                  {state.prepareStatus === 'loading' ? t('prepare.building') : ''}
+                </p>
+                {state.prepareStatus === 'error' ? (
+                  <p role="alert" className="text-sm text-high">
+                    {t(errorKeyFor(state.prepareError))}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <PrepareSheet
+                sheet={state.prepare}
+                documentName={state.document?.fileName ?? null}
+                flagged={analysis.findings
+                  .filter((finding) => finding.risk === 'HIGH' && isPresentable(finding.evidence))
+                  .map((finding) => ({
+                    label: clauseById(finding.clauseId)?.label ?? finding.clauseId,
+                    risk: finding.risk,
+                    title: finding.title,
+                    text: clauseById(finding.clauseId)?.text ?? '',
+                  }))}
+              />
+            )
+          ) : null}
+        </Tabs>
+      )}
     </section>
   );
 }

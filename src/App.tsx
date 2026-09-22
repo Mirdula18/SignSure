@@ -1,10 +1,11 @@
-import { Suspense, useCallback, useEffect } from 'react';
+import { Suspense, useCallback, useEffect, useRef } from 'react';
 import type { Lens } from '@shared/lenses';
 import { AppFooter } from '@/components/AppFooter';
 import { AppHeader } from '@/components/AppHeader';
 import { DisclaimerBanner } from '@/components/DisclaimerBanner';
 import { SkipLink } from '@/components/SkipLink';
 import { Button } from '@/components/Button';
+import { focusHeadingWhenReady } from '@/components/focusHeading';
 import { LensPicker } from '@/features/lenses/LensPicker';
 import { SessionGate } from '@/features/session/SessionGate';
 import { UploadScreen } from '@/features/upload/UploadScreen';
@@ -34,6 +35,22 @@ export default function App() {
     if (state.stage === 'lenses') void loadReportScreen();
   }, [state.stage]);
 
+  // The button that moves to a new screen is gone once it has, so focus goes to the new
+  // screen's heading instead of falling back to the page body. Not on first load: the skip link
+  // must stay the first stop.
+  const mainRef = useRef<HTMLElement>(null);
+  const shownStage = useRef(state.stage);
+  useEffect(() => {
+    if (shownStage.current === state.stage) return;
+    shownStage.current = state.stage;
+    return focusHeadingWhenReady(mainRef.current);
+  }, [state.stage]);
+
+  // Mounted for the life of the page, so the announcement survives the loading view being
+  // replaced by the report. Focus stays where the reader left it (WCAG 3.2.5).
+  const announcement =
+    state.stage === 'report' && state.analysisStatus === 'ready' ? t('report.ready') : '';
+
   return (
     <>
       <SkipLink />
@@ -41,6 +58,7 @@ export default function App() {
       <DisclaimerBanner />
 
       <main
+        ref={mainRef}
         id="main"
         tabIndex={-1}
         className="mx-auto max-w-5xl px-4 py-8 focus-visible:outline-none"
@@ -125,6 +143,10 @@ export default function App() {
             </Button>
           </p>
         ) : null}
+
+        <p className="sr-only" aria-live="polite">
+          {announcement}
+        </p>
       </main>
 
       <AppFooter />

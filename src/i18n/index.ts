@@ -1,3 +1,4 @@
+import type { ClauseCategory } from '@shared/types';
 import { en, type Dictionary, type TranslationKey } from './en';
 import { hi } from './hi';
 
@@ -13,6 +14,16 @@ const dictionaries: Record<Language, Dictionary> = {
 };
 
 export type TranslateParams = Readonly<Record<string, string | number>>;
+
+/**
+ * The dictionary key for a clause category's display name.
+ *
+ * Typed against the dictionary, so a category without a translation fails the type check instead
+ * of showing the raw enum (or an English label in the Hindi interface).
+ */
+export function categoryKey(category: ClauseCategory): TranslationKey {
+  return `category.${category}`;
+}
 
 /**
  * Looks up a string and substitutes `{placeholders}`.

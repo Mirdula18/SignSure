@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { en, translate } from '@/i18n';
+import { CLAUSE_CATEGORIES } from '@shared/types';
+import { categoryKey, en, translate } from '@/i18n';
 
 describe('translate', () => {
   it('returns the English string', () => {
@@ -19,5 +20,20 @@ describe('translate', () => {
     for (const [key, value] of Object.entries(en)) {
       expect(value, `${key} must not be empty`).not.toBe('');
     }
+  });
+});
+
+describe('categoryKey', () => {
+  it.each(CLAUSE_CATEGORIES)('gives %s a real name in both languages', (category) => {
+    for (const language of ['en', 'hi'] as const) {
+      const name = translate(language, categoryKey(category));
+      expect(name).not.toBe(categoryKey(category));
+      expect(name).not.toContain('_');
+    }
+  });
+
+  it('writes category names as a reader would, not as the enum', () => {
+    expect(translate('en', categoryKey('BOND_OR_EXIT_PENALTY'))).toBe('Bond or exit penalty');
+    expect(translate('hi', categoryKey('NOTICE_PERIOD'))).toBe('नोटिस अवधि');
   });
 });

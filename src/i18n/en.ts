@@ -21,6 +21,9 @@ export const en = {
     'SignSure is an educational tool. It does not create a lawyer-client relationship and its output may be incomplete or wrong. Laws differ by state and change over time. Please consult a qualified advocate before relying on any interpretation.',
   'app.startOver': 'Clear everything',
   'app.startOverHint': 'Removes your document and this report from this browser.',
+  'app.loadFailed':
+    'This part of SignSure did not load, usually because the site was just updated. Reloading the page fixes it. Your document is never stored, so you will need to add it again.',
+  'app.reload': 'Reload the page',
 
   'lang.label': 'Language',
   'lang.en': 'English',

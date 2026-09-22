@@ -2,102 +2,157 @@
 
 **Understand every clause before you sign.**
 
-SignSure helps first-time job seekers in India understand their offer letter and employment contract *before* they sign it. It explains each clause in plain language (English or an Indian language), flags risky or possibly unenforceable terms, and answers questions **only** from the document itself, showing the exact clause and page next to every answer so the user can check it.
+[![CI](https://github.com/Mirdula18/SignSure/actions/workflows/ci.yml/badge.svg)](https://github.com/Mirdula18/SignSure/actions/workflows/ci.yml)
+
+SignSure helps first-time job seekers in India understand their offer letter or employment agreement *before* they sign it. It explains each clause in plain English or Hindi, flags terms worth a closer look using a reviewed India rule library, and answers questions **only** from the document, showing the exact clause and page next to every answer so the reader can check it.
 
 > ⚖️ SignSure provides legal *information*, not legal advice. It helps you understand your document and prepare the right questions for a qualified lawyer.
+
+**Live app:** _added after deployment (see [`HUMAN_TASKS.md`](HUMAN_TASKS.md))_ · **Try it without a file:** press *Try with a sample offer letter*.
+
+| Report | Every claim beside its source |
+|---|---|
+| ![The report overview for the sample offer letter: at-a-glance summary, verification count and a high-risk bond finding with a verified-quote badge](docs/screenshots/report.jpg) | ![A bond finding opened side by side with clause 5.2, the verified quote highlighted in the original text](docs/screenshots/side-by-side.jpg) |
+| **Says when the document is silent** | **On a phone, in dark mode** |
+| ![The Ask tab answering "Your document does not say this" to a question about parents' health insurance, with questions to ask instead](docs/screenshots/ask-refusal.jpg) | ![The report on a 390 px wide phone screen in dark mode](docs/screenshots/phone-report.jpg) |
+
+<sub>Screenshots use the built-in synthetic sample letter in mock mode.</sub>
 
 ---
 
 ## The problem
 
-Having a contract is not the same as understanding it. A 22-year-old signing their first offer letter usually has 2–3 days to accept, no lawyer, and a document full of phrases like *"liquidated damages"*, *"restraint"*, and *"notwithstanding anything contained herein"*. The clauses that hurt most (a 90-day notice period, a ₹2 lakh training bond, a 2-year non-compete) are often buried on page 4.
+Having a contract is not the same as understanding it. A 22-year-old signing their first offer letter usually has two or three days to accept, no lawyer, and a document full of phrases like *"liquidated damages"*, *"restraint"* and *"notwithstanding anything contained herein"*. The clauses that cost the most (a 90-day notice period, a ₹2 lakh training bond, a two-year non-compete, original certificates kept by the employer) are often on page 4.
 
-## Who it's for
-
-**Primary user:** an Indian first-job employee or early-career job switcher (age ~21–27) who has received an offer letter or employment agreement and must decide whether to sign.
-
-**What they worry about:** notice period, training bonds and exit penalties, non-compete clauses, real take-home salary, probation, termination terms, and what to negotiate.
+**Who it is for:** Indian first-job employees and early-career job switchers (about 21–27) deciding whether to sign. They worry about notice periods, bonds and exit penalties, non-competes, real take-home pay, probation and termination, and what they can reasonably ask to change.
 
 ## Why not just paste it into a chatbot?
 
 | General AI chatbot | SignSure |
 |---|---|
-| Fluent answers you can't easily check | Every claim is linked to a clause number + page, with the original text shown side by side |
-| May guess when the document is silent | Says **"This document doesn't say"** and tells you what to ask instead |
-| Citations can be invented | Quotes are **verified by code** against the source text; unverified claims are hidden or marked |
-| Generic legal knowledge | India-specific rule library (Indian Contract Act s.27 & s.74, Labour Codes 2025, gratuity, PF) applied deterministically |
-| A chat transcript | A structured report, a signing checklist, and a "questions for your lawyer" sheet |
-| Your document may be stored | Parsed in your browser; nothing is stored on our servers |
+| Fluent answers you can't easily check | Every explanation is tied to a clause number and page, with the original text shown beside it |
+| May guess when the document is silent | Says **"Your document does not say this"** and suggests what to ask instead |
+| Citations can be invented | Every quote is **checked by code** against the clause it cites; anything that fails is set apart and never counted as a red flag |
+| Generic legal knowledge | A reviewed India rule library (Indian Contract Act ss.27 and 74, Code on Wages 2019, gratuity, notice, bonds, document retention) applied by code, not by the model |
+| A chat transcript | A structured report, a clause-by-clause view, a version comparison and a sheet of questions for HR or a lawyer |
+| Your document may be kept | Files are read in your browser; only clause text is sent for analysis, and nothing is stored |
 
-## Features
-
-- **Clause map** – the document split into numbered clauses with page references, each with a plain-language explanation and a risk level.
-- **Concern lenses** – "I might quit early", "Future jobs", "My salary", "Getting fired" re-rank the report around what you care about.
-- **Red flags with Indian legal context** – deterministic rules flag things like post-employment non-competes and heavy bond penalties.
-- **Grounded Q&A** – ask anything; answers cite verified clauses or explicitly say the document doesn't cover it.
-- **Compare two versions** – see what changed between an old and a revised offer.
-- **Lawyer prep sheet** – exportable list of open questions, missing information, and documents to bring.
-- **Accessible by design** – WCAG 2.2 AA target, keyboard-first, screen-reader friendly, reading-level toggle, read-aloud, English + Hindi (+ more).
-
-## Architecture at a glance
+## How it works
 
 ```mermaid
 flowchart LR
-  U[User browser<br/>React + Vite] -->|PDF/DOCX parsed locally<br/>pdf.js / mammoth| P[Clause segmenter]
-  P -->|clause text + IDs only| F[Cloudflare Pages Functions<br/>/api/*]
-  F -->|Turnstile, Zod, rate limit| G[Gemini API<br/>structured JSON]
-  G --> F
-  F -->|quote verification<br/>+ rule engine| U
+  subgraph Browser["Your browser"]
+    F["PDF, DOCX or pasted text"] --> P["pdf.js / mammoth<br/>parsed on the device"]
+    P --> S["Segmenter<br/>clause ids and page numbers"]
+    UI["Report · Clauses · Ask · Compare · Prepare"]
+  end
+  subgraph Edge["Cloudflare Pages Functions"]
+    M["Middleware<br/>origin check · 256 KB cap · security headers"] --> A["Turnstile session token<br/>KV rate limit · Zod validation"]
+    A --> G["Gemini Flash<br/>structured JSON"]
+    G --> V["Zod-validate output · drop unknown clause ids<br/>verify every quote · run India rules"]
+  end
+  S -- "clause text and ids only" --> M
+  V -- "verified findings and rule cards" --> UI
 ```
 
-The model never invents page numbers: it returns **clause IDs + quotes**, and the server resolves IDs to pages and verifies each quote exists in that clause. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+**Code decides, the model explains.** The model returns clause ids and quotes, never page numbers: pages come from our own parse. Each quote is checked against the clause it claims to come from (`shared/verify.ts`), an "answered" reply with no verified citation is downgraded to "not in the document", and rule-card text comes from `shared/rules`, never from the model. Document and question text are fenced as untrusted data in every prompt. Details are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md).
 
-## Tech stack
+## Features
 
-React 19 · Vite · TypeScript (strict) · Tailwind CSS · Zod · Google Gemini API (`@google/genai`) · Cloudflare Pages + Pages Functions · Workers KV · Cloudflare Turnstile · pdf.js · mammoth · Vitest · React Testing Library · Playwright · axe-core · GitHub Actions
+- **Clause map:** the document split into numbered clauses under their section titles, each explained with a risk level and a verification badge.
+- **Concern lenses:** "I might quit early", "My next job", "My salary" and "Being let go" re-rank the report around what the reader cares about.
+- **India rule library:** 16 deterministic rules (post-employment non-competes, bonds and liquidated damages, asymmetric or long notice, document retention, clawbacks, unilateral changes, the 50% wages rule and more) plus 6 checks for information a letter should state but doesn't.
+- **Grounded Q&A:** answers cite verified clauses, or say plainly that the document does not cover the question.
+- **Compare two versions:** clauses are paired by code, and the model explains only the pairs it is given.
+- **Prepare sheet:** a signing checklist, questions for HR and for a lawyer, missing information and documents to bring, exportable as Markdown or printable.
+- **Accessible by design:** WCAG 2.2 AA target, keyboard-first, screen-reader friendly (roles, labels and live regions checked in tests), reading-level toggle, read-aloud, inline glossary, English and Hindi.
 
-## Quick start
+## Quality at a glance
 
-```bash
-npm install
-cp .dev.vars.example .dev.vars      # add GEMINI_API_KEY etc.
-npm run dev                          # frontend (Vite) on :5173, proxies /api to :8788
-npm run dev:api                      # Pages Functions via wrangler on :8788
-```
-
-Set `MOCK_GEMINI=true` in `.dev.vars` to run fully offline with fixture responses.
-
-| Script | Purpose |
+| | |
 |---|---|
-| `npm run lint` | ESLint (incl. jsx-a11y) |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Unit + component tests (Vitest) |
-| `npm run test:e2e` | Playwright end-to-end + axe accessibility |
-| `npm run eval` | Golden-set evaluation against the real Gemini API |
-| `npm run build` | Production build |
+| Unit and component tests | **1,553** across 57 files (Vitest, React Testing Library, vitest-axe) |
+| End-to-end tests | **76**: 38 journeys, accessibility and security checks, each on desktop Chromium and a Pixel 7 viewport (Playwright + axe) |
+| Coverage | **99.87%** lines · 99.15% statements · 96.21% branches · 99.77% functions; **100%** on quote verification, normalisation and the rule library (enforced in CI) |
+| Golden set | 6 synthetic contracts with expectations, including a prompt-injection contract; 85 offline checks on every test run |
+| Initial JavaScript | **117.0 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
+| Lighthouse (production build, local) | Accessibility **100** · Best practices **100** · SEO **100** · Performance 98 desktop, 74–92 mobile (simulated slow 4G, 4× CPU) |
+| Security checks | Secret scan, `npm audit` (0 vulnerabilities), CSP pinned by test, 401 / 413 / 429 paths tested end to end |
+| Repository | 1.9 MB of tracked files |
 
 ## How this project maps to the judging criteria
 
-| Criterion | Where to look |
+| Criterion | Evidence |
 |---|---|
-| Problem statement alignment | This README, [`docs/PRD.md`](docs/PRD.md) |
-| Code quality | Strict TS, layered structure, [`CLAUDE.md`](CLAUDE.md) conventions |
-| Security | [`docs/SECURITY.md`](docs/SECURITY.md), `functions/_middleware.ts`, `public/_headers` |
-| Efficiency | [`docs/ARCHITECTURE.md#performance-budgets`](docs/ARCHITECTURE.md) |
-| Testing | [`docs/TESTING.md`](docs/TESTING.md), `tests/`, `e2e/`, CI workflow |
-| Accessibility | [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md) |
+| **Problem statement alignment** | Built for one audience and one decision: signing an Indian offer letter. Rule texts cite primary sources with review dates ([`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md)); cautious wording is enforced by tests; the disclaimer is on every screen. |
+| **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; 40 recorded design decisions in [`docs/DECISIONS.md`](docs/DECISIONS.md). |
+| **Security** | Key only in Functions `env`; Turnstile → HMAC session bound to a hashed IP; KV rate limits; 256 KB body cap; origin check; CSP with no inline or eval script; prompt fences sanitised; no server logging of document text. Checklist with evidence in [`docs/SECURITY.md`](docs/SECURITY.md) §4. |
+| **Efficiency** | Parsing happens on the device; only clause text is sent. Parsers, the report and the Turnstile script load only when needed; initial JS budget enforced in CI. |
+| **Testing** | Unit, component, API-handler, golden-set, E2E and axe layers, run in CI on every push ([`docs/TESTING.md`](docs/TESTING.md)); `npm run eval` scores the live model against the golden set. |
+| **Accessibility** | axe on every screen, keyboard-only journey, 320 px reflow and 200% zoom tested end to end; 44 px targets; Hindi interface; reading level; read-aloud ([`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)). |
+
+## Evaluation
+
+The golden set in [`tests/fixtures/contracts/`](tests/fixtures/contracts) has six synthetic letters: a fair offer, a bond-heavy offer and its revised version, a non-compete-heavy offer, a letter that leaves most things out, and a prompt-injection letter. Each one comes with what a careful reader would expect.
+
+- **Offline, on every test run:** segmentation, all rule flags (and the flags that must *not* fire), extracted amounts and missing-information checks. 85 checks, all passing.
+- **Live model:** `npm run eval` sends each contract through the real HTTP API and reports quote verification, refusal accuracy, category and rule recall, citation precision and latency. It fails below 95% verification, below 100% refusal accuracy, or on any injection violation.
+
+| Live eval (Gemini Flash) | Result |
+|---|---|
+| Quote verification (target ≥ 95%) | _pending first run with a key_ |
+| Refusal accuracy (target 100%) | _pending_ |
+| Rule recall · category recall | _pending_ |
+| Latency p50 / p95 | _pending_ |
+
+## Quick start
+
+Requires Node 20.19 or newer.
+
+```bash
+npm install
+cp .dev.vars.example .dev.vars   # MOCK_GEMINI=true by default: no key needed
+npm run dev                      # app and API together on http://localhost:5173
+```
+
+The Pages Functions run inside the Vite dev server (`tools/pagesFunctions.ts`), so the whole stack runs with one command. Mock mode builds realistic responses from your document's own clauses, so verification and the rules behave exactly as they do live. To use the real model, put a Gemini key in `.dev.vars` and set `MOCK_GEMINI=false`. Deployment uses `wrangler`, which needs Node 22: see [`HUMAN_TASKS.md`](HUMAN_TASKS.md) and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+| Script | Purpose |
+|---|---|
+| `npm run dev` | App and API on :5173 |
+| `npm run lint` · `npm run typecheck` · `npm run format:check` | ESLint (type-aware, jsx-a11y) · `tsc` for the app, Functions and tooling · Prettier |
+| `npm test` · `npm run test:coverage` | Vitest, with coverage thresholds |
+| `npm run test:e2e` | Playwright against the production build, desktop and mobile |
+| `npm run eval` · `npm run eval -- --mock` | Golden set against the live model · the same harness without a key |
+| `npm run build` · `npm run size` | Production build · initial-JS budget check |
+| `npm run secretscan` | Fails on anything shaped like a credential in tracked files |
+| `npm run deploy` | Build and deploy to Cloudflare Pages (Node 22) |
+
+## Project structure
+
+```
+shared/      Pure logic used by browser and Workers: types, Zod schemas, limits,
+             quote verification, compare pairing, concern lenses, India rules
+functions/   Cloudflare Pages Functions: middleware, /api/{session,analyze,ask,compare,prepare,health},
+             Gemini wrapper, prompts, sessions, rate limiting, Turnstile, mock model
+src/         React app: upload and parsing, report tabs, session gate, i18n (en, hi), state
+tests/       Golden set, eval metrics, header checks
+e2e/         Playwright journeys, accessibility and security suites
+scripts/     eval, secret scan, bundle budget
+tools/       Vite plugin that runs Pages Functions locally
+```
 
 ## Documentation
 
-- [`docs/PRD.md`](docs/PRD.md) – users, problems, features, acceptance criteria
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) – system design, API contracts, folder structure
-- [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md) – Gemini prompts, schemas, verification
-- [`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md) – India employment rule library
-- [`docs/UX_FLOW.md`](docs/UX_FLOW.md) – screens and interaction design
-- [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/TESTING.md`](docs/TESTING.md) · [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) – Cloudflare Pages setup
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) – phased build planner
-- [`docs/SUBMISSION.md`](docs/SUBMISSION.md) – demo script, blog and post outlines, final checklist
+- [`docs/PRD.md`](docs/PRD.md): users, problems, features, acceptance criteria
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): system design, API contracts, folder structure
+- [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md): prompts, schemas, verification, evaluation
+- [`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md): the India employment rule library and its sources
+- [`docs/UX_FLOW.md`](docs/UX_FLOW.md) · [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md): screens, interaction and accessibility
+- [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/TESTING.md`](docs/TESTING.md): threat model, checklist, test strategy
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): every gap, trade-off and assumption, with the reason
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · [`HUMAN_TASKS.md`](HUMAN_TASKS.md): deploying, and the steps that need an account
+- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) · [`docs/SUBMISSION.md`](docs/SUBMISSION.md) · [`docs/BLOG_DRAFT.md`](docs/BLOG_DRAFT.md): plan and log, submission kit, blog draft
 
 ## Disclaimer
 

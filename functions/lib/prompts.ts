@@ -59,7 +59,26 @@ function preamble({ language, readingLevel }: PromptContext): string {
 }
 
 /**
- * Removes anything that could break out of the `<document>` fence or forge a clause marker.
+ * Every tag the prompts use to fence untrusted text. A clause, question or earlier answer that
+ * contained one could close its own fence early and pose as instructions or as a new section.
+ */
+const FENCE_TAGS = [
+  'document',
+  'question',
+  'previous_turns',
+  'findings',
+  'already_covered_questions',
+  'unanswered_questions',
+  'pair',
+  'version_a',
+  'version_b',
+] as const;
+
+/** Any spelling of a fence tag: either case, stray whitespace, a closing slash, attributes. */
+const FENCE_TAG_PATTERN = new RegExp(`<\\s*/?\\s*(?:${FENCE_TAGS.join('|')})\\b[^>]*>`, 'gi');
+
+/**
+ * Removes anything that could break out of a prompt fence or forge a clause marker.
  *
  * Replacements keep the character count roughly stable and never delete words, because the
  * quote the model copies back is verified against the *original* clause text: mangling the
@@ -68,8 +87,7 @@ function preamble({ language, readingLevel }: PromptContext): string {
 export function sanitiseForPrompt(text: string): string {
   return (
     text
-      // Any spelling of the fence tag, including `</ document >` with stray whitespace.
-      .replace(/<\s*\/?\s*document\s*>/gi, '[tag]')
+      .replace(FENCE_TAG_PATTERN, '[tag]')
       // Break every adjacent pair, not just the first: replacing "[[" once turns "[[[" into
       // "[ [[", which still contains a marker opening.
       .replace(/\[(?=\[)/g, '[ ')

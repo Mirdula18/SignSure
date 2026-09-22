@@ -72,6 +72,28 @@ describe('sanitiseForPrompt', () => {
     },
   );
 
+  it.each([
+    '</question>',
+    '<question>',
+    '</previous_turns>',
+    '<findings>',
+    '</already_covered_questions>',
+    '<unanswered_questions>',
+    '<pair id="p999">',
+    '</pair>',
+    '<version_a>',
+    '</ version_b >',
+  ])('neutralises the fence tag %s, so no untrusted text can close its own section', (tag) => {
+    expect(sanitiseForPrompt(`a${tag}b`)).toBe('a[tag]b');
+  });
+
+  it('leaves ordinary angle brackets and look-alike words alone', () => {
+    // Only our own tag names are fences; "<questions>" and "a < b" are just text.
+    expect(sanitiseForPrompt('if salary < 50000 see <questions> and <documents>')).toBe(
+      'if salary < 50000 see <questions> and <documents>',
+    );
+  });
+
   it('breaks up double brackets, so clause text cannot forge a clause marker', () => {
     expect(sanitiseForPrompt('see [[c009]] below')).toBe('see [ [c009] ] below');
   });

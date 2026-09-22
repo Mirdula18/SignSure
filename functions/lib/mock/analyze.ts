@@ -132,15 +132,28 @@ const PATTERNS: readonly Pattern[] = [
 ];
 
 /**
- * Takes a quote from the clause: a whole sentence where possible, otherwise a prefix.
+ * A sentence: starts at a capital letter or bracket and runs to a full stop followed by a space.
  *
- * Long enough to clear the twelve-character minimum in `shared/verify.ts` and short enough to
- * look like something a model would actually return.
+ * Dots inside a sentence are kept when no space follows ("5.2", "2,00,000") or when they end a
+ * common abbreviation ("Rs. 2,00,000"), so a clause number or an amount does not cut a quote in
+ * half and a quote never starts on the stray digit after "5.".
+ */
+const SENTENCE = /[A-Z(](?:[^.]|\.(?=\S)|(?<=\b(?:Rs|No|Nos|viz))\.)*?\.(?=\s|$)/g;
+
+/**
+ * Takes a quote from the clause: its first whole sentence of a sensible length, otherwise a
+ * prefix. Long enough to clear the twelve-character minimum in `shared/verify.ts` and short
+ * enough to look like something a model would actually return.
  */
 function quoteFrom(text: string): string {
-  const sentence = /[^.]{25,180}\./.exec(text);
-  if (sentence?.[0]) return sentence[0].trim();
-  return text.slice(0, 160).trim();
+  for (const [sentence] of text.matchAll(SENTENCE)) {
+    if (sentence.length >= 25 && sentence.length <= 240) return sentence.trim();
+  }
+  // No sentence of a usable length: take the opening words after any clause number.
+  const start = Math.max(0, text.search(/[A-Z(]/));
+  const opening = text.slice(start, start + 160);
+  // Only a cut prefix can end mid-word; a short clause is quoted whole.
+  return (start + 160 < text.length ? opening.replace(/\s+\S*$/, '') : opening).trim();
 }
 
 function findingFor(clause: PromptClause): Record<string, unknown> | null {
@@ -160,11 +173,19 @@ function findingFor(clause: PromptClause): Record<string, unknown> | null {
   };
 }
 
+/** The first match in any clause: its first capture group if it has one, else the whole match. */
 function firstMatch(clauses: readonly PromptClause[], pattern: RegExp): string | null {
-  const clause = clauses.find((candidate) => pattern.test(candidate.text));
-  if (!clause) return null;
-  const match = pattern.exec(clause.text);
-  return match?.[0]?.trim() ?? null;
+  for (const clause of clauses) {
+    const match = pattern.exec(clause.text);
+    if (match) return (match[1] ?? match[0]).trim();
+  }
+  return null;
+}
+
+/** A rupee amount from the clause that is about `topic`, not merely the first one in the letter. */
+function amountAbout(clauses: readonly PromptClause[], topic: RegExp): string | null {
+  const clause = clauses.find((candidate) => topic.test(candidate.text));
+  return clause ? firstMatch([clause], /Rs\. ?[\d,]+/) : null;
 }
 
 /**
@@ -202,12 +223,14 @@ export function mockAnalyze(userPrompt: string): Record<string, unknown> {
     documentSummary: {
       documentType: clauses.length > 0 ? 'Letter of appointment' : null,
       employer: firstMatch(clauses, /[A-Z][A-Za-z]+ Technologies Private Limited/),
-      role:
-        firstMatch(clauses, /position of ([A-Z][A-Za-z ]+)/)?.replace('position of ', '') ?? null,
+      role: firstMatch(clauses, /position of ([A-Z][A-Za-z ]+?)(?= (?:with|at|in)\b|[,.])/),
       startDate: firstMatch(clauses, /\d{1,2} [A-Z][a-z]+ \d{4}/),
       noticePeriod: firstMatch(clauses, /(ninety|sixty|thirty|\d{1,3}) \(?\d{0,3}\)? ?days/i),
       probation: firstMatch(clauses, /probation for a period of [^.]{0,40}/i),
-      bondOrPenalty: firstMatch(clauses, /Rs\. ?[\d,]+/),
+      bondOrPenalty: amountAbout(
+        clauses,
+        /liquidated damages|training bond|service bond|minimum period/i,
+      ),
       overview:
         'This is an offer of employment. It sets out pay, notice, probation, and several terms that would apply if you leave before a stated period.',
       sourceClauseIds: clauses.slice(0, 3).map((clause) => clause.id),

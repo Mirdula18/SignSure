@@ -1,5 +1,6 @@
+import { required } from './arrays';
 import { normalize, tokenize } from './normalize';
-import type { Clause, ClauseCategory } from './types';
+import type { Clause } from './types';
 
 /**
  * Deterministic clause matching for the compare feature.
@@ -9,12 +10,12 @@ import type { Clause, ClauseCategory } from './types';
  * every downstream comparison nonsense. Pairing happens here, in code, and the model is only
  * asked the genuinely judgemental part: whether a difference matters to the employee.
  *
- * Matching runs in three passes, strongest signal first:
- * 1. identical clause labels ("9.2" in both versions)
- * 2. same category, best token overlap
- * 3. token overlap alone, above a threshold
+ * Matching runs in two passes, strongest signal first:
+ * 1. identical clause labels ("9.2" in both versions), however much the text changed
+ * 2. token overlap alone, above a threshold
  *
- * Anything left unmatched is an addition or a removal.
+ * Anything left unmatched is an addition or a removal. Each clause is tokenised once, so pairing
+ * a long agreement against its revision stays cheap even though every pair is scored.
  */
 
 /** Below this, two clauses are treated as unrelated rather than as a heavy rewrite. */
@@ -24,15 +25,11 @@ export interface ClausePair {
   pairId: string;
   a: Clause | null;
   b: Clause | null;
-  /** Category, when the analysis supplied one for either side. */
-  category: ClauseCategory;
   /** Jaccard similarity of the two token sets, or 0 when one side is absent. */
   similarity: number;
   /** True when the two texts are identical once normalised. */
   identical: boolean;
 }
-
-export type CategoryLookup = Readonly<Record<string, ClauseCategory | undefined>>;
 
 /** Words too common in contracts to carry any matching signal. */
 const STOP_WORDS: ReadonlySet<string> = new Set([
@@ -60,8 +57,9 @@ const STOP_WORDS: ReadonlySet<string> = new Set([
   'such',
 ]);
 
-function tokenSet(text: string): Set<string> {
-  const tokens = tokenize(normalize(text))
+/** Content words of already-normalised text, for overlap scoring. */
+function tokenSet(normalized: string): Set<string> {
+  const tokens = tokenize(normalized)
     .map((token) => token.value.replace(/[^\p{L}\p{N}]/gu, ''))
     .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
   return new Set(tokens);
@@ -69,8 +67,10 @@ function tokenSet(text: string): Set<string> {
 
 /** Jaccard similarity: shared words over total distinct words. */
 export function similarity(a: string, b: string): number {
-  const setA = tokenSet(a);
-  const setB = tokenSet(b);
+  return jaccard(tokenSet(normalize(a)), tokenSet(normalize(b)));
+}
+
+function jaccard(setA: ReadonlySet<string>, setB: ReadonlySet<string>): number {
   if (setA.size === 0 && setB.size === 0) return 1;
   if (setA.size === 0 || setB.size === 0) return 0;
 
@@ -84,7 +84,9 @@ export function similarity(a: string, b: string): number {
 interface Candidate {
   aIndex: number;
   bIndex: number;
+  /** Similarity, lifted above every unlabelled candidate when the labels match. */
   score: number;
+  similarity: number;
 }
 
 /**
@@ -97,30 +99,26 @@ interface Candidate {
 export function pairClauses(
   clausesA: readonly Clause[],
   clausesB: readonly Clause[],
-  categories: CategoryLookup = {},
 ): ClausePair[] {
+  // Normalised and tokenised once per clause: doing it inside the pair loop made a 150-clause
+  // comparison take seconds of CPU.
+  const normalizedA = clausesA.map((clause) => normalize(clause.text));
+  const normalizedB = clausesB.map((clause) => normalize(clause.text));
+  const tokensA = normalizedA.map(tokenSet);
+  const tokensB = normalizedB.map(tokenSet);
   const candidates: Candidate[] = [];
 
   clausesA.forEach((a, aIndex) => {
     clausesB.forEach((b, bIndex) => {
-      const score = similarity(a.text, b.text);
-      const sameLabel = a.label !== null && a.label === b.label;
-      const sameCategory = categories[a.id] !== undefined && categories[a.id] === categories[b.id];
-
-      if (sameLabel) {
+      const score = jaccard(required(tokensA, aIndex), required(tokensB, bIndex));
+      if (a.label !== null && a.label === b.label) {
         // A shared label is strong evidence even when the text was rewritten wholesale.
-        candidates.push({ aIndex, bIndex, score: 1 + score });
+        candidates.push({ aIndex, bIndex, score: 1 + score, similarity: score });
         return;
       }
-      if (sameCategory) {
-        // Deliberately not conditional on text overlap: a clause rewritten from scratch shares
-        // almost no words with the version it replaces, and that total rewrite is exactly the
-        // change a reader most needs to see. Where several clauses share a category, the
-        // greedy best-first pass below still prefers the textually closest of them.
-        candidates.push({ aIndex, bIndex, score: 0.5 + score });
-        return;
+      if (score >= SIMILARITY_THRESHOLD) {
+        candidates.push({ aIndex, bIndex, score, similarity: score });
       }
-      if (score >= SIMILARITY_THRESHOLD) candidates.push({ aIndex, bIndex, score });
     });
   });
 
@@ -142,9 +140,9 @@ export function pairClauses(
       pairId: `${a.id}-${b.id}`,
       a,
       b,
-      category: categories[a.id] ?? categories[b.id] ?? 'GENERAL',
-      similarity: similarity(a.text, b.text),
-      identical: normalize(a.text) === normalize(b.text),
+      similarity: candidate.similarity,
+      identical:
+        required(normalizedA, candidate.aIndex) === required(normalizedB, candidate.bIndex),
     });
   }
 
@@ -154,7 +152,6 @@ export function pairClauses(
       pairId: `${a.id}-none`,
       a,
       b: null,
-      category: categories[a.id] ?? 'GENERAL',
       similarity: 0,
       identical: false,
     });
@@ -166,7 +163,6 @@ export function pairClauses(
       pairId: `none-${b.id}`,
       a: null,
       b,
-      category: categories[b.id] ?? 'GENERAL',
       similarity: 0,
       identical: false,
     });

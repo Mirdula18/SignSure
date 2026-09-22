@@ -46,7 +46,6 @@ const RESULT: CompareResult = {
       changeType: 'CHANGED',
       impact: 'WORSE_FOR_EMPLOYEE',
       summary: 'Your notice period doubles from 30 to 60 days.',
-      category: 'NOTICE_PERIOD',
       quoteA: {
         clauseId: 'c001',
         quote: 'thirty (30) days written notice',
@@ -61,7 +60,6 @@ const RESULT: CompareResult = {
       changeType: 'ADDED',
       impact: 'WORSE_FOR_EMPLOYEE',
       summary: 'A training bond has been added.',
-      category: 'BOND_OR_EXIT_PENALTY',
       quoteA: null,
       quoteB: { clauseId: 'c004', quote: 'a bond of two lakh rupees', status: 'unverified' },
     },
@@ -70,7 +68,6 @@ const RESULT: CompareResult = {
       changeType: 'REMOVED',
       impact: 'BETTER_FOR_EMPLOYEE',
       summary: 'The non-compete has been removed.',
-      category: 'NON_COMPETE',
       quoteA: {
         clauseId: 'c002',
         quote: 'shall not join a competitor for twelve months',

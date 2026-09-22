@@ -171,7 +171,6 @@ export interface ClauseChange {
   changeType: ChangeType;
   impact: ChangeImpact;
   summary: string;
-  category: ClauseCategory;
   quoteA: VerifiedQuote | null;
   quoteB: VerifiedQuote | null;
 }

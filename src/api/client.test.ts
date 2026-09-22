@@ -106,7 +106,6 @@ const COMPARE: CompareResult = {
       changeType: 'ADDED',
       impact: 'WORSE_FOR_EMPLOYEE',
       summary: 'A training bond was added.',
-      category: 'BOND_OR_EXIT_PENALTY',
       quoteA: null,
       quoteB: { clauseId: 'c002', quote: 'a bond of two lakh rupees', status: 'fuzzy' },
     },

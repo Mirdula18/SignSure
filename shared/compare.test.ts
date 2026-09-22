@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { changedPairs, pairClauses, similarity, unchangedCount } from './compare';
-import type { Clause, ClauseCategory } from './types';
+import type { Clause } from './types';
 
 let nextOrder = 0;
 
@@ -130,24 +130,32 @@ describe('pairClauses', () => {
     expect(matched?.b?.label).toBe('6.1');
   });
 
-  it('uses the category from the analysis to pair rewritten clauses', () => {
+  it('reports the overlap of a labelled pair even when the text was rewritten wholesale', () => {
     reset();
-    const a = [clause('You must not join a competitor for two years after leaving.')];
-    const b = [clause('Post-employment restraints have been removed entirely from this offer.')];
-    const categories: Record<string, ClauseCategory> = {
-      [a[0]!.id]: 'NON_COMPETE',
-      [b[0]!.id]: 'NON_COMPETE',
-    };
+    const a = [clause('You must not join a competitor for two years after leaving.', '10.1')];
+    const b = [
+      clause('Post-employment restraints have been removed entirely from this offer.', '10.1'),
+    ];
 
-    const pairs = pairClauses(a, b, categories);
+    const pairs = pairClauses(a, b);
     expect(pairs).toHaveLength(1);
-    expect(pairs[0]?.category).toBe('NON_COMPETE');
+    expect(pairs[0]?.similarity).toBeLessThan(0.35);
+    expect(pairs[0]?.identical).toBe(false);
   });
 
-  it('falls back to GENERAL when no category is known', () => {
+  it('pairs two long agreements quickly, because each clause is tokenised only once', () => {
+    // Found in review: tokenising inside the pair loop took about 23 seconds of CPU for 150
+    // clauses a side, which is within the request limits and far beyond a Worker's CPU budget.
     reset();
-    const pairs = pairClauses([clause(BOND, '5.2')], [clause(BOND, '5.2')]);
-    expect(pairs[0]?.category).toBe('GENERAL');
+    const words = (seed: number) =>
+      Array.from({ length: 40 }, (_, index) => `term${String((seed * 7 + index) % 97)}`).join(' ');
+    const a = Array.from({ length: 150 }, (_, index) => clause(words(index), `${index + 1}.1`));
+    const b = Array.from({ length: 150 }, (_, index) => clause(words(index + 1), `${index + 1}.1`));
+
+    const started = performance.now();
+    const pairs = pairClauses(a, b);
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(pairs.filter((pair) => pair.a !== null && pair.b !== null)).toHaveLength(150);
   });
 
   it('orders results by the old document, with additions after', () => {

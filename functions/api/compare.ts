@@ -107,7 +107,6 @@ export function toChanges(
       changeType: pair.a === null ? 'ADDED' : pair.b === null ? 'REMOVED' : 'CHANGED',
       impact: change.impact,
       summary: change.summary,
-      category: pair.category,
       quoteA,
       quoteB,
     });

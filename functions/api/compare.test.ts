@@ -92,7 +92,7 @@ const VERSION_A = [A_SALARY, A_NOTICE, A_LEAVE];
 const VERSION_B = [B_SALARY, B_NOTICE, B_NON_COMPETE];
 
 function pair(pairId: string, a: Clause | null, b: Clause | null): ClausePair {
-  return { pairId, a, b, category: 'NOTICE_PERIOD', similarity: 0.5, identical: false };
+  return { pairId, a, b, similarity: 0.5, identical: false };
 }
 
 const CHANGED = pair('c002-c002', A_NOTICE, B_NOTICE);
@@ -318,11 +318,10 @@ describe('toChanges', () => {
     expect(result!.quoteB).toBeNull();
   });
 
-  it("takes the category from our pairing and keeps the model's impact and summary", () => {
+  it("keeps our pair id and the model's impact and summary", () => {
     const [result] = toChanges([change({ impact: 'UNCLEAR', summary: 'Hard to say.' })], [CHANGED]);
     expect(result).toMatchObject({
       pairId: 'c002-c002',
-      category: 'NOTICE_PERIOD',
       impact: 'UNCLEAR',
       summary: 'Hard to say.',
     });

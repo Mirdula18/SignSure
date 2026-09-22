@@ -297,7 +297,6 @@ export const compareResponseSchema = z.object({
       changeType: z.enum(['ADDED', 'REMOVED', 'CHANGED']),
       impact: z.enum(['BETTER_FOR_EMPLOYEE', 'WORSE_FOR_EMPLOYEE', 'NEUTRAL', 'UNCLEAR']),
       summary: z.string(),
-      category: clauseCategorySchema,
       quoteA: verifiedQuoteSchema.nullable(),
       quoteB: verifiedQuoteSchema.nullable(),
     }),

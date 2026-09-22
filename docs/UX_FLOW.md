@@ -17,11 +17,12 @@
 
 ### 2. Upload
 - Dropzone (also a real `<input type="file">` button), paste-text tab.
-- Turnstile widget (managed/invisible).
+- No security check yet: a visitor who only reads the home page never contacts Cloudflare.
 - After parse: "We found 32 clauses across 5 pages." + preview of first clauses.
 - Language + reading level selectors here and in header.
 
 ### 3. Concerns (lenses)
+- Turnstile widget (managed) starts here and keeps running into the report if needed; Analyse waits for it.
 Checkbox cards (multi-select, keyboard accessible):
 - I might quit early (notice, bond, exit costs)
 - Future jobs (non-compete, non-solicit, confidentiality)

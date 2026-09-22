@@ -63,7 +63,8 @@ signsure/
 │  ├─ main.tsx, App.tsx
 │  ├─ components/                 # generic UI (Button, Tabs, Badge, Dialog, Skeleton)
 │  ├─ features/
-│  │  ├─ upload/                  # Dropzone, PasteText, TurnstileWidget
+│  │  ├─ upload/                  # Dropzone, paste text, sample
+│  │  ├─ session/                 # SessionGate, TurnstileWidget (D37)
 │  │  ├─ parsing/                 # pdfParser.ts, docxParser.ts, segmenter.ts
 │  │  ├─ lenses/
 │  │  ├─ report/                  # Overview, ClauseList, SideBySide, RedFlagCard, RuleCard
@@ -148,7 +149,7 @@ export interface AskResult {
 ## 4. Request flow
 
 ### 4.1 Session
-1. Browser renders Turnstile; on success calls `POST /api/session { turnstileToken }`.
+1. Once a document is loaded, `App` mounts `SessionGate`, which renders Turnstile and on success calls `POST /api/session { turnstileToken }`. It stays mounted across the concern and report screens until a session exists (DECISIONS D37).
 2. Server verifies with Cloudflare siteverify, returns `{ token }`: an HMAC-SHA256 signed payload `{ iat, exp (30 min), ipHash }`.
 3. All other `/api/*` calls send `Authorization: Bearer <token>`. Prevents direct scripted abuse of the Gemini proxy without re-solving Turnstile per call.
 

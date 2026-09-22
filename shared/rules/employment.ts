@@ -179,7 +179,14 @@ export const EMPLOYMENT_RULES: readonly Rule[] = [
       (text) =>
         /original (certificate|certificates|document|documents|mark ?sheet|mark ?sheets|degree|degrees|testimonial)/.test(
           text,
-        ) && /retain|deposit|submit|surrender|keep|hold|custody|safe custody/.test(text),
+        ) &&
+        /retain|deposit|submit|surrender|keep|hold|custody|safe custody/.test(text) &&
+        // A clause that protects the reader is not a red flag: "shall not retain any original
+        // documents", or originals that are only checked and handed back. "Shall not retain ...
+        // beyond the service period" is still retention, so a time limit keeps the flag.
+        !/(shall|will|may|does) not (retain|keep|hold|take)(?![^.]*\b(beyond|after|longer than|more than|until)\b)|not be (retained|kept|held)|verified and returned|returned (to you |to the employee )?(immediately|forthwith|on the same day|after verification)/.test(
+          text,
+        ),
     ),
     title: 'Keeping your original documents',
     message:

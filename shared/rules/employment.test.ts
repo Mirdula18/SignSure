@@ -307,6 +307,31 @@ describe('IN-EMP-DOC-RETENTION', () => {
       hitIds('Originals of your documents will be verified and returned to you immediately.'),
     ).toEqual([]);
   });
+
+  it.each([
+    'The Company shall not retain any original documents of the Employee.',
+    'Please submit self-attested copies of your certificates. Original certificates will be verified and returned on the same day.',
+    'Your original certificates will not be retained by the Company at any time.',
+  ])('does not flag a clause that protects the reader: %s', (text) => {
+    // Found in review: the first two used to be flagged HIGH, turning a protection into a red flag.
+    expect(hitIds(text)).toEqual([]);
+  });
+
+  it('still flags a promise not to keep originals "beyond" a period, because that is retention', () => {
+    expect(
+      hitIds(
+        'The Company shall not retain your original certificates beyond the minimum service period.',
+      ),
+    ).toEqual(['IN-EMP-DOC-RETENTION']);
+  });
+
+  it('still flags originals returned only when the service period ends', () => {
+    expect(
+      hitIds(
+        'You shall deposit your original degree certificate, which will be returned on completion of the service period.',
+      ),
+    ).toEqual(['IN-EMP-DOC-RETENTION']);
+  });
 });
 
 describe('IN-EMP-NONSOLICIT', () => {

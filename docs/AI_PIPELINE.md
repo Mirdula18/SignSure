@@ -183,4 +183,10 @@ Golden set in `tests/fixtures/contracts/`: 4–6 synthetic offer letters (fair, 
 ```
 Metrics printed: quote verification rate, category recall, rule recall, refusal accuracy, answered-citation precision, latency p50/p95, tokens. Target: verification ≥ 95%, refusal accuracy 100%.
 
+**As built (2026-09-21):**
+- Fixtures refer to clauses by their printed **label** (`"clauseLabels": ["5.1"]`), not generated ids, so an expectation survives a change to segmentation. The full schema is in `tests/golden.ts`. It adds `mustNotFlagRules`, `mustReportMissing` / `mustNotReportMissing`, `expectedDetails` (e.g. the bond amount) and, for the injection fixture, `forbiddenClauseIds` / `forbiddenVerifiedQuotes`.
+- The deterministic half (segmentation, rules, missing information) runs on every `npm test` via `tests/golden.test.ts`.
+- `npm run eval` sends each contract through `/api/session` → `/api/analyze` → `/api/ask` over HTTP. It also reports missing-information recall and answer-status accuracy, and lists every miss and false flag by name. It fails on verification < 95%, refusal accuracy < 100%, any injection violation or any failed request. `--mock` checks the harness without a key; `--only <name>` and `--pace <ms>` help stay inside free-tier quota.
+- Tokens are not reported: the API deliberately returns no usage metadata, and Google AI Studio shows usage per key (DECISIONS D33).
+
 Contracts must be **synthetic** (no real employer names or personal data) and small, to keep the repo well under 10 MB.

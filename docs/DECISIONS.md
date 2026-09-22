@@ -17,3 +17,62 @@ phase. Where the docs were ambiguous, the simpler option that respects `CLAUDE.m
 | D08 | `style-src` allows `'unsafe-inline'`. | Vite injects the stylesheet link and Tailwind emits a `<style>` element during development; the alternative is per-build nonces, which Cloudflare Pages' static `_headers` cannot generate. No inline `<script>` is allowed, which is where the XSS risk actually lives. |
 | D09 | Preferences (language, reading level) persist in `sessionStorage`; nothing else is stored. | `docs/ARCHITECTURE.md` section 8 allows exactly this. Document text never touches storage. |
 | D10 | `@google/genai`, `pdfjs-dist` and `mammoth` are runtime `dependencies`, not dev. | Cloudflare Pages bundles Functions from `dependencies`, and the parsers ship to the browser (lazily). |
+| D11 | Added `globals` and `@eslint/js` as dev dependencies, outside the approved list. | ESLint 10's flat config needs `@eslint/js` for the recommended rule set and `globals` to declare browser / Node / Worker globals per folder. Both are ESLint-team packages with no runtime footprint. |
+
+## Phase 1 – Shared core (2026-09-20)
+
+| # | Decision | Why |
+|---|---|---|
+| D12 | Quote verification normalises with NFKC, keeping separate start and end origin maps, then falls back to a token-level fuzzy match (similarity ≥ 0.9, window slack 2, smallest length gap wins). Quotes under 12 characters never verify. | A single origin map clipped Devanagari vowel signs and misplaced astral characters; two maps keep highlights exact in both scripts. Short quotes ("the Company") match almost anywhere and prove nothing. |
+| D13 | Each rule is one `evaluate(context) → { severity, details } \| null` function instead of separate test / severity / details hooks. | Separate hooks forced unreachable defensive branches, which blocked 100% coverage without ignore comments. One function reads the clause once and has no impossible paths. |
+| D14 | Optional response fields use Zod 4's `z.exactOptional`. | With `exactOptionalPropertyTypes`, `z.optional` infers `x?: T \| undefined`, which does not match the shared types the UI consumes. |
+
+## Phase 2 – Parsing (2026-09-20)
+
+| # | Decision | Why |
+|---|---|---|
+| D15 | Clause labels allow up to three digits per level (`100.`, `12.4.1`), and a line opening with a figure and a unit ("30 days notice…") is not a label. | Long agreements pass clause 99; "30 days notice" was being read as clause 30. |
+
+## Phase 3 – Secure backend (2026-09-20)
+
+| # | Decision | Why |
+|---|---|---|
+| D16 | Session tokens are `base64url(payload).base64url(HMAC-SHA256)`, bound to a salted IP hash, valid 30 minutes. A secret under 32 characters is treated as absent everywhere: issue, verify and health. | One definition of a usable secret stops a short, guessable key being accepted by one path and rejected by another. |
+| D17 | Rate limiting fails open when KV is missing or errors; Turnstile fails closed. | A KV hiccup should not take the product down while Turnstile, the session token and payload caps still apply. Turnstile is the gate itself, so it cannot fail open. |
+| D18 | The Turnstile test secret `1x0000…AA` is accepted without a network call, and a dev build with no `VITE_TURNSTILE_SITE_KEY` falls back to the public test site key. Production builds get no fallback. | E2E and eval runs must be hermetic, and local development should work before a Cloudflare account exists. Both values are Cloudflare's documented always-pass keys. |
+| D19 | Mock mode builds its responses from the clause text inside the prompt instead of replaying recorded Gemini responses. One finding per analysis is deliberately unverifiable. | No API key was available while building. Deriving quotes from the real clauses means mock mode still exercises real verification, and the planted bad quote keeps the "couldn't verify" path visible. Recording real responses is optional follow-up in `HUMAN_TASKS.md`. |
+| D20 | The prompt sanitiser rewrites `<document>` / `</document>` in any spelling to `[tag]` and breaks up `[[` / `]]`, in clause text and headings. | Those are the two structures the prompt uses to fence the document and mark clause boundaries; a document must not be able to forge either. |
+
+## Phases 4–6 – Analyze, Ask, Prepare (2026-09-21)
+
+| # | Decision | Why |
+|---|---|---|
+| D21 | A clause's category steers the rule engine only when the finding that assigned it has a verified or close-match quote. | Otherwise an unverified model claim could switch a deterministic rule card on or off, letting the model decide what the code decides. |
+| D22 | `AnalysisResult.partial` is set when any batch of a long document fails, and the report says so. | Silently dropping half a contract would make "no red flags" look like a finding. |
+| D23 | App state tracks `sessionStatus: 'pending' \| 'ready' \| 'failed'`, and Analyze waits for `ready`. | A fast click could fire `/api/analyze` before Turnstile finished, producing a spurious 401. |
+| D24 | Turnstile `NOT_CONFIGURED` (no server secret) maps to `INTERNAL` (500), not `UNAUTHORIZED`. | It is a deployment fault; telling the visitor to retry the challenge would send them round in circles. |
+
+## Phase 7 – Accessibility and language (2026-09-21)
+
+| # | Decision | Why |
+|---|---|---|
+| D25 | Glossary terms expand inline (a button revealing the definition in the text flow) instead of popovers. | Popovers are hard to make work with touch, screen readers and 200% zoom at once; an inline disclosure is a native pattern that reflows. |
+| D26 | Each screen has exactly one `h1`; sections inside a tab are `h2` and cards are `h3`. | axe flagged skipped levels, and screen-reader users navigate by heading level. |
+| D27 | A followed citation moves focus to the clause card (`tabIndex={-1}`), not just the scroll position. | Scrolling alone leaves keyboard and screen-reader users where they were. |
+
+## Phase 8 – Compare (2026-09-21)
+
+| # | Decision | Why |
+|---|---|---|
+| D28 | Clauses are paired by label, then category, then word overlap (Jaccard ≥ 0.35); the model only explains pairs the code made. Compare quotes must match exactly on their own side. | Two versions of a clause are close matches for each other by construction, so a fuzzy match could verify a quote against the wrong document. |
+
+## Phase 9 – Quality and eval (2026-09-21)
+
+| # | Decision | Why |
+|---|---|---|
+| D29 | Vitest runs with `maxWorkers: 4` and a 20 s jsdom test timeout; Playwright uses 3 workers locally and 2 in CI, a fresh server every run, and a unique `CF-Connecting-IP` per test. | On an 8 GB machine one worker per core starved jsdom workers, which failed to start and made coverage read 51%. A reused server served stale builds; a shared IP tripped the rate limiter between tests. |
+| D30 | pdf.js and mammoth stay out of the initial bundle by dynamic `import()` alone (no `manualChunks`), enforced by `scripts/bundle-size.mjs` checking for library markers in the initial chunks. | `manualChunks` pulled pdf.js into the entry's static graph. The marker check fails loudly if a future import does the same. |
+| D31 | The segmenter merges a short unnumbered paragraph into the clause above only when it is a fragment: under 60 characters, not ending in `.` `!` `?` `।`, or starting in lower case. This departs from `ARCHITECTURE.md` §5's "merged until ≥ 200 chars". | The golden set showed unnumbered letters, which state one term per short paragraph, collapsing into a single clause, so the salary term was cited as part of the greeting. |
+| D32 | Missing-information rules reuse the notice-period extractor, count "appointed / employed / joining as" as a stated role, and do not count "as per the leave policy" as a leave entitlement. | Found by the golden set. A pointer to a policy the reader has not been given says nothing about how much leave they get. |
+| D33 | `npm run eval` drives the real HTTP API through an in-process Vite server. Refusal accuracy counts only questions where answering would be wrong; a forbidden quote is a violation only when it supports an `answered` reply. Token counts are not reported. | HTTP measures everything between the model and the screen. Quoting an injected clause to describe it is correct behaviour. The API deliberately returns no usage metadata; token use is visible in Google AI Studio. |
+| D34 | Fake secrets in tests contain spaces ("test only: a thirty-two byte key") rather than being allow-listed in `scripts/secret-scan.mjs`, and `public/_headers` is pinned by `tests/headers.test.ts`. | The secret scan runs in CI and must stay strict. The E2E preview server does not serve `_headers`, so without the test a weakened CSP would only show up on the live site. |

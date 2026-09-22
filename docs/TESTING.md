@@ -6,12 +6,15 @@
 | Unit | Vitest | `shared/*` (normalize, verify, rules, lenses, schemas), `functions/lib/*` (session, ratelimit, http), segmenter |
 | API handler | Vitest + mocked Gemini + in-memory KV | Each `/api/*` route: happy path, validation errors, auth, rate limit, model failures, verification downgrade |
 | Component | Vitest + React Testing Library + `vitest-axe` | Upload, LensPicker, ClauseCard, SideBySide, AskPanel states, PrepareSheet export |
-| End-to-end | Playwright (Chromium + mobile viewport) + `@axe-core/playwright` | Full journeys against `wrangler pages dev` with `MOCK_GEMINI=true` |
-| AI eval | `scripts/eval.ts` (real Gemini, manual/nightly) | Golden-set metrics (see AI_PIPELINE.md §9) |
+| End-to-end | Playwright (Chromium desktop + Pixel 7) + `@axe-core/playwright` | Full journeys, accessibility and security suites against `vite build` + `vite preview` with the Pages Functions mounted in-process (`tools/pagesFunctions.ts`) and `MOCK_GEMINI=true`. Wrangler needs Node 22, so it is used to deploy, not to test (DECISIONS D05). |
+| Golden set (offline) | Vitest, `tests/golden.test.ts` | Six synthetic contracts: segmentation, the rule library and missing-information rules against expectations a reader would agree with. Runs on every `npm test`, no key needed. |
+| Config | Vitest, `tests/headers.test.ts` | Pins the CSP and hardening headers in `public/_headers`, which the preview server does not serve. |
+| AI eval | `npm run eval` (real Gemini, manual) · `npm run eval -- --mock` (harness check) | Golden set through the live HTTP API; metrics in `tests/evalMetrics.ts` (unit tested). See AI_PIPELINE.md §9. |
 
 ## 2. Coverage targets
-- `shared/` and `functions/lib/`: ≥ 90% lines, 100% for `verify.ts` and `rules/`.
-- Overall: ≥ 80% lines. Enforced in `vitest.config.ts` thresholds.
+- Overall: ≥ 80% lines, statements, branches and functions.
+- 100% for `shared/verify.ts`, `shared/normalize.ts` and everything in `shared/rules/`.
+- Both enforced as thresholds in `vitest.config.ts`; CI fails below them. Actual figures are in the README.
 
 ## 3. Must-have test cases
 **verify.ts**
@@ -37,7 +40,7 @@
 - model says answered, citations verify → answered
 - model says answered, citations fail → downgraded to not_in_document
 - model returns unknown clause ID → citation dropped
-- model returns invalid JSON twice → 502 MODEL_INVALID_OUTPUT
+- model returns invalid JSON on the first call, the retry and the JSON-only repair attempt (three calls) → 502 MODEL_INVALID_OUTPUT (`functions/lib/gemini.test.ts`)
 - missing token → 401; bad body → 400; big body → 413
 
 **security**
@@ -55,27 +58,13 @@
 8. Upload `.exe` renamed `.pdf` → rejected.
 
 ## 4. Fixtures
-`tests/fixtures/contracts/`: synthetic `.txt` (and 1 tiny generated `.pdf`, < 50 KB) offer letters; `tests/fixtures/gemini/`: recorded JSON responses used by `MOCK_GEMINI` and handler tests. Keep all fixtures small.
+- `tests/fixtures/contracts/`: six synthetic `.txt` offer letters with `.expected.json` beside each (fair, bond-heavy, its revised version for Compare, non-compete-heavy, missing-notice, prompt-injection). Under 20 KB in total, enforced by a test.
+- Mock mode does not replay recorded responses. `functions/lib/mock/` builds each response from the clause text in the prompt, so quotes still go through real verification (DECISIONS D19). Recording real responses is optional follow-up in `HUMAN_TASKS.md`.
+- No binary fixtures. The PDF and DOCX parser tests stub pdf.js and mammoth at their boundary and test our code around them: page numbering, the scanned-PDF check, error mapping. The E2E suite builds its "executable renamed to .pdf" file in memory.
 
 ## 5. CI (`.github/workflows/ci.yml`)
-```yaml
-name: ci
-on: [push, pull_request]
-jobs:
-  build-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:coverage
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-        env: { MOCK_GEMINI: 'true' }
-      - name: secret scan
-        run: "! git grep -nE 'AIza[0-9A-Za-z_-]{20,}'"
-```
+Node 22 on Ubuntu, on every push to `main` and every pull request:
+secret scan → lint → typecheck → format check → `test:coverage` (thresholds enforced) → build →
+bundle budget (`npm run size`) → Playwright (Chromium, `MOCK_GEMINI=true`), with the report
+uploaded on failure. A second job runs `npm audit --omit=dev --audit-level=high`.
+`npm run eval` is deliberately not in CI: it spends real quota and varies from run to run.

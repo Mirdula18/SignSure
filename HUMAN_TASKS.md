@@ -16,10 +16,19 @@ Work top to bottom. Items 1–5 are needed for a live deployment; 6–8 are for 
    GEMINI_API_KEY=AIza...
    MOCK_GEMINI=false
    ```
-4. Check it works without deploying anything:
+4. Check it works without deploying anything (one contract, about a minute):
    ```bash
-   npm run eval -- --limit 1
+   npm run eval -- --only fair-offer
    ```
+5. Then run the whole golden set once (about 3 minutes, ~20 requests, paced for the free tier)
+   and paste the table it prints into the **Evaluation** section of `README.md`:
+   ```bash
+   npm run eval
+   ```
+   It exits non-zero if quote verification is under 95%, if any "not in the document" question
+   was answered, or if the prompt-injection contract changed the model's behaviour. Full results
+   land in `eval-results/` (gitignored). If it fails, send me the printed lists; each one names
+   the contract and the rule or question involved.
 
 > Free-tier requests may be used by Google to improve their products. For judging day, enable
 > billing on the project so the key runs on the paid tier (see `docs/SECURITY.md` §3.6).

@@ -87,6 +87,51 @@ describe('TurnstileWidget', () => {
     script?.remove();
   });
 
+  it('shares one script between widgets mounted before it has loaded', async () => {
+    // A remount while the script is still downloading must wait for it, not add a second copy.
+    const first = renderWidget();
+    const second = renderWidget();
+    const scripts = document.querySelectorAll<HTMLScriptElement>(
+      'script[src*="challenges.cloudflare.com"]',
+    );
+    expect(scripts).toHaveLength(1);
+
+    const { render } = installTurnstile((options) => {
+      options.callback('shared');
+    });
+    act(() => {
+      scripts[0]?.dispatchEvent(new Event('load'));
+    });
+    await waitFor(() => {
+      expect(render).toHaveBeenCalledTimes(2);
+    });
+    expect(first.onToken).toHaveBeenCalledWith('shared');
+    expect(second.onToken).toHaveBeenCalledWith('shared');
+    first.unmount();
+    second.unmount();
+    scripts[0]?.remove();
+  });
+
+  it('fails every waiting widget when the shared script cannot load', async () => {
+    const firstStates: TurnstileState[] = [];
+    const secondStates: TurnstileState[] = [];
+    const first = renderWidget((state) => firstStates.push(state));
+    const second = renderWidget((state) => secondStates.push(state));
+    const script = document.querySelector<HTMLScriptElement>(
+      'script[src*="challenges.cloudflare.com"]',
+    );
+    act(() => {
+      script?.dispatchEvent(new Event('error'));
+    });
+    await waitFor(() => {
+      expect(firstStates).toContain('failed');
+      expect(secondStates).toContain('failed');
+    });
+    first.unmount();
+    second.unmount();
+    script?.remove();
+  });
+
   it('removes the widget when it goes away', async () => {
     const { remove } = installTurnstile();
     const { unmount } = renderWidget();

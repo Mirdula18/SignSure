@@ -17,7 +17,7 @@
 | Malicious files (zip bombs, huge PDFs) | Browser hang | Type sniffing (magic bytes `%PDF`, `PK`), 10 MB cap, 40-page cap, parse in try/catch with timeout |
 | Oversized API payloads | CPU/cost | 256 KB request body cap in middleware; Zod max lengths |
 | PII leakage | Privacy harm | No server logging of bodies; optional client-side redaction of emails/phones/PAN/Aadhaar-like numbers before sending; no analytics on content |
-| CSRF / cross-origin use | Abuse | Bearer token (not cookies); `Origin` check against `ALLOWED_ORIGIN`; no permissive CORS |
+| CSRF / cross-origin use | Abuse | Bearer token (not cookies); writes must come from the same origin or `ALLOWED_ORIGIN` (DECISIONS D35); no permissive CORS |
 | Clickjacking | UI redress | `frame-ancestors 'none'`, `X-Frame-Options: DENY` |
 | Dependency vulnerabilities | Supply chain | `npm audit` in CI, lockfile, minimal dependencies, Dependabot |
 | Hallucinated legal claims | User harm | Verification pipeline, refusal path, reviewed rule text, disclaimers, escalation language |
@@ -51,17 +51,20 @@ Keys: `rl:{route}:{ipHash}:{windowStart}` with `expirationTtl`. KV is eventually
 - Model output also Zod-validated; clause IDs must exist in the request.
 
 ### 3.5 Headers (`public/_headers` for static, `_middleware.ts` for API)
+The authoritative copy is `public/_headers`, pinned by `tests/headers.test.ts`:
 ```
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
 ```
-API responses also set `Cache-Control: no-store`.
+`style-src 'unsafe-inline'` is a deliberate trade-off (DECISIONS D08); inline *scripts* stay
+blocked. API responses also set `Cache-Control: no-store`.
 
 ### 3.6 Privacy (aligned with the spirit of India's DPDP Act, 2023)
 - Purpose limitation: text is used only to produce the requested analysis.

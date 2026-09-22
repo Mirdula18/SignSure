@@ -99,7 +99,7 @@ Then set, in **Settings → Variables and Secrets** (plain text, not secret):
 |---|---|
 | `GEMINI_MODEL` | `gemini-3.8-flash` |
 | `MOCK_GEMINI` | `false` |
-| `ALLOWED_ORIGIN` | your live origin, e.g. `https://signsure.pages.dev` |
+| `ALLOWED_ORIGIN` | your live origin, e.g. `https://signsure.pages.dev` (optional: same-origin requests, including preview deployments and custom domains, are always allowed) |
 | `VITE_TURNSTILE_SITE_KEY` | your Turnstile site key (build variable) |
 | `NODE_VERSION` | `22` |
 

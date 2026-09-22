@@ -214,6 +214,48 @@ describe('onRequest origin check', () => {
     expect(response.status).toBe(200);
   });
 
+  it('allows a same-origin write on a host other than ALLOWED_ORIGIN, such as a preview deployment', async () => {
+    // Cloudflare gives every preview deployment its own subdomain. Rejecting its own requests
+    // would tell every visitor their session had expired, and reloading would never fix it.
+    const preview = 'https://3f2a1b9c.signsure.pages.dev';
+    const next = route();
+    const response = await call({
+      request: req(`${preview}/api/analyze`, 'POST', { origin: preview }),
+      env: ENV,
+      next,
+    });
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+  });
+
+  it('also allows ALLOWED_ORIGIN when the page and the API are on different ports', async () => {
+    // Development behind a proxy: the page is on 5173, the functions answer on 8788.
+    const next = route();
+    const response = await call({
+      request: req('http://localhost:8788/api/analyze', 'POST', {
+        origin: 'http://localhost:5173',
+      }),
+      env: { ALLOWED_ORIGIN: 'http://localhost:5173' },
+      next,
+    });
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+  });
+
+  it.each([
+    ['a look-alike that starts with our origin', `${SITE}.evil.example`],
+    ['our origin over plain http', SITE.replace('https:', 'http:')],
+    ['a sibling subdomain', 'https://evil.pages.dev'],
+  ])('rejects %s', async (_label, origin) => {
+    const next = route();
+    const response = await call({ request: req(API_URL, 'POST', { origin }), env: ENV, next });
+
+    expect(response.status).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it.each(UNCONFIGURED)(
     'falls back to same-origin when ALLOWED_ORIGIN is %s, so a missing var cannot open the API up',
     async (_label, env) => {

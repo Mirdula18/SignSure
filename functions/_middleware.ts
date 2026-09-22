@@ -37,17 +37,20 @@ const WRITE_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DEL
  * cookie, so a cross-site request cannot borrow the user's credentials anyway; the origin check
  * simply stops the proxy being embedded in someone else's site. Requests with no `Origin` at
  * all (curl, a health probe) are allowed through: they carry no ambient authority to abuse.
+ *
+ * A same-origin request is always allowed: it came from a page on the host it was sent to. That
+ * matters because Cloudflare serves every preview deployment, and any custom domain, from a
+ * different origin than the one in `ALLOWED_ORIGIN`; rejecting them would tell every visitor
+ * their session had expired, and reloading would never fix it. `ALLOWED_ORIGIN` names one extra
+ * origin, for development behind a proxy where the page and the API are on different ports.
  */
 function originAllowed(request: Request, env: Env): boolean {
   const origin = request.headers.get('origin');
   if (origin === null) return true;
+  if (origin === new URL(request.url).origin) return true;
 
   const allowed = env.ALLOWED_ORIGIN?.trim();
-  if (allowed === undefined || allowed.length === 0) {
-    // Unconfigured: fall back to same-origin, so a missing var cannot open the API up.
-    return origin === new URL(request.url).origin;
-  }
-  return origin === allowed;
+  return allowed !== undefined && allowed.length > 0 && origin === allowed;
 }
 
 function withSecurityHeaders(response: Response): Response {

@@ -101,7 +101,9 @@ export function pagesFunctions(): Plugin {
     }
 
     try {
-      const request = await toWebRequest(req, 'http://localhost:5173');
+      // The real host, as Cloudflare would see it, so the same-origin check in the middleware
+      // behaves the same under `vite`, `vite preview` and the E2E suite.
+      const request = await toWebRequest(req, `http://${req.headers.host ?? 'localhost'}`);
       const env = { ...parseDevVars(), ...process.env, RATE_LIMIT_KV: kv };
       const routeMod = (await loader.ssrLoadModule(file)) as Record<string, unknown>;
       const handler = pickHandler(routeMod, request.method);

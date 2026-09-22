@@ -71,12 +71,12 @@ API responses also set `Cache-Control: no-store`.
 - User control: "Clear everything" button wipes in-memory state.
 
 ## 4. Security checklist (verify before each submission)
-- [ ] `git grep -nE "AIza[0-9A-Za-z_-]{20,}"` returns nothing
-- [ ] `.dev.vars`, `.env*` in `.gitignore`
-- [ ] No `dangerouslySetInnerHTML`, no `eval`, no `new Function`
-- [ ] CSP header present on deployed site (check with securityheaders.com)
-- [ ] Calling `/api/analyze` without token → 401
-- [ ] 9th analyze in an hour → 429
-- [ ] 300 KB body → 413
-- [ ] Injection fixture ("Ignore previous instructions…" inside a clause) does not change behaviour
-- [ ] `npm audit --omit=dev` has no high/critical
+- [x] `git grep -nE "AIza[0-9A-Za-z_-]{20,}"` returns nothing — verified 2026-09-21; `npm run secretscan` (run in CI) checks this and five other credential shapes on every push.
+- [x] `.dev.vars`, `.env*` in `.gitignore` — `.dev.vars`, `.dev.vars.*`, `.env`, `.env.*` ignored; only the `.example` files are tracked.
+- [x] No `dangerouslySetInnerHTML`, no `eval`, no `new Function` — banned by three `no-restricted-syntax` selectors in `eslint.config.js` (lint runs in CI); `git grep` finds them only in comments explaining the ban.
+- [ ] CSP header present on deployed site (check with securityheaders.com) — **needs the live URL** (`HUMAN_TASKS.md`). The file that sets it, `public/_headers`, is pinned by `tests/headers.test.ts`: no inline or eval script, `connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`.
+- [x] Calling `/api/analyze` without token → 401 — `e2e/security.spec.ts` ("rejects /api/analyze without a session token", plus forged and replayed-from-another-network tokens).
+- [x] 9th analyze in an hour → 429 — `e2e/security.spec.ts` ("refuses the ninth analysis from one address within the hour") and `functions/lib/ratelimit.test.ts`.
+- [x] 300 KB body → 413 — `e2e/security.spec.ts` ("rejects a 300 KB body before the route reads it") and `functions/_middleware.test.ts`.
+- [x] Injection fixture ("Ignore previous instructions…" inside a clause) does not change behaviour — deterministic half: `functions/lib/prompts.test.ts` (fence and marker forging), `tests/golden.test.ts` (injection contract), `e2e/security.spec.ts` (response shape and verification unchanged). Model half: `npm run eval` fails on any injection violation; run it with a real key before submitting.
+- [x] `npm audit --omit=dev` has no high/critical — 0 vulnerabilities (full `npm audit` also 0), 2026-09-21.

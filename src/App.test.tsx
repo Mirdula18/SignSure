@@ -97,8 +97,11 @@ describe('App stages', () => {
     await user.click(screen.getByRole('checkbox', { name: /i might quit early/i }));
     await user.click(screen.getByRole('button', { name: /analyse my document/i }));
 
-    // No session in a unit test, so the report waits in its busy state for one.
-    expect(screen.getByRole('heading', { level: 1, name: /your report/i })).toBeInTheDocument();
+    // The report's code loads on demand. No session in a unit test, so once it arrives the
+    // report waits in its busy state for one.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /your report/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /your report/i })).toHaveAttribute(
       'aria-busy',
       'true',

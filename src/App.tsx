@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import type { Lens } from '@shared/lenses';
 import { AppFooter } from '@/components/AppFooter';
 import { AppHeader } from '@/components/AppHeader';
@@ -6,8 +6,8 @@ import { DisclaimerBanner } from '@/components/DisclaimerBanner';
 import { SkipLink } from '@/components/SkipLink';
 import { Button } from '@/components/Button';
 import { LensPicker } from '@/features/lenses/LensPicker';
-import { ReportScreen } from '@/features/report/ReportScreen';
 import { UploadScreen } from '@/features/upload/UploadScreen';
+import { LazyReportScreen, loadReportScreen } from '@/lazyScreens';
 import { useAppState } from '@/state/appState';
 import { useT } from '@/state/preferences';
 
@@ -27,6 +27,11 @@ export default function App() {
     },
     [dispatch],
   );
+
+  // Fetch the report's code while the reader is choosing concerns, not after they press Analyse.
+  useEffect(() => {
+    if (state.stage === 'lenses') void loadReportScreen();
+  }, [state.stage]);
 
   return (
     <>
@@ -86,7 +91,17 @@ export default function App() {
           </>
         ) : null}
 
-        {state.stage === 'report' ? <ReportScreen /> : null}
+        {state.stage === 'report' ? (
+          <Suspense
+            fallback={
+              <p role="status" className="text-sm text-muted">
+                {t('report.loading')}
+              </p>
+            }
+          >
+            <LazyReportScreen />
+          </Suspense>
+        ) : null}
 
         {state.stage !== 'upload' ? (
           <p className="no-print mt-10 text-xs text-muted">

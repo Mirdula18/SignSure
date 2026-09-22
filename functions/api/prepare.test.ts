@@ -145,11 +145,12 @@ function categoriesOf(fixtures: readonly Fixture[]): Record<string, ClauseCatego
 }
 
 /** Reviewed questions from the serious rules, in the order the route receives them. */
-function seriousQuestions(fixtures: readonly Fixture[]): string[] {
+function seriousQuestions(fixtures: readonly Fixture[], language: 'en' | 'hi' = 'en'): string[] {
   return ruleQuestions(
     runRules(clausesOf(fixtures), categoriesOf(fixtures)).filter(
       (hit) => hit.severity === 'HIGH' || hit.severity === 'MEDIUM',
     ),
+    language,
   );
 }
 
@@ -364,6 +365,20 @@ describe('POST /api/prepare in mock mode', () => {
     expect(sheet.missingInformation).toContain('Leave entitlement: not stated in this document.');
     // The letter does talk about probation, so that gap must not be claimed.
     expect(sheet.missingInformation).not.toContain('Probation terms: not stated in this document.');
+  });
+
+  it('writes the reviewed questions and the gaps in Hindi when the sheet is in Hindi', async () => {
+    const sheet = prepareResponseSchema.parse(
+      await (await prepare(prepareBody(HARSH, { language: 'hi' }))).json(),
+    );
+
+    const hindi = seriousQuestions(HARSH, 'hi');
+    expect(sheet.questionsForLawyer).toContain(hindi[0]);
+    for (const question of seriousQuestions(HARSH)) {
+      expect(sheet.questionsForLawyer).not.toContain(question);
+    }
+    expect(sheet.missingInformation).toContain('नोटिस अवधि: इस डॉक्यूमेंट में नहीं लिखा है।');
+    expect(sheet.missingInformation).not.toContain('Notice period: not stated in this document.');
   });
 
   it('reports the remaining budget in the rate-limit headers', async () => {

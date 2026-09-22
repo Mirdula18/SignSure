@@ -1,5 +1,5 @@
 import { prepareModelOutputSchema, prepareRequestSchema } from '../../shared/schemas';
-import { runRules, ruleQuestions, findMissingInfo } from '../../shared/rules';
+import { findMissingInfo, notStatedLine, ruleQuestions, runRules } from '../../shared/rules';
 import type { PrepareResult } from '../../shared/types';
 import type { Env } from '../lib/env';
 import { isMockMode } from '../lib/env';
@@ -68,6 +68,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // thirty questions that nobody takes to a meeting.
   const reviewedQuestions = ruleQuestions(
     hits.filter((hit) => hit.severity === 'HIGH' || hit.severity === 'MEDIUM'),
+    language,
   ).slice(0, MAX_REVIEWED_QUESTIONS);
   const gaps = findMissingInfo(clauses);
 
@@ -99,7 +100,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     questionsForLawyer: dedupe([...outcome.data.questionsForLawyer, ...reviewedQuestions]),
     missingInformation: dedupe([
       ...outcome.data.missingInformation,
-      ...gaps.map((gap) => `${gap.label}: not stated in this document.`),
+      ...gaps.map((gap) => notStatedLine(gap, language)),
     ]),
     documentsToBring: dedupe(outcome.data.documentsToBring),
   };

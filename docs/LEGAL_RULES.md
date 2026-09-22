@@ -157,4 +157,4 @@ export interface Rule {
 }
 ```
 - Pure functions, no network. 100% unit-test coverage with positive and negative examples for each rule.
-- Translations of rule text live in `src/i18n/*` keyed by rule ID (human-reviewed, not model-translated at runtime).
+- Translations of rule text live in `shared/rules/hindi.ts` keyed by rule ID (reviewed text, never model-translated at runtime). They sit beside the English rather than in `src/i18n` because `/api/prepare` needs them on the server too (DECISIONS D41). The Hindi is a first draft awaiting review by a Hindi-speaking legal reviewer; `basis` citations are not translated.

@@ -3,7 +3,7 @@
 Everything else in SignSure is built, tested and runnable offline with `MOCK_GEMINI=true`.
 These tasks need your accounts or your face. Each one should take a few minutes.
 
-Work top to bottom. Items 1–5 are needed for a live deployment; 6–8 are for the submission.
+Work top to bottom. Items 1–5 are needed for a live deployment; 6–9 are for the submission.
 
 ---
 
@@ -123,7 +123,18 @@ screenshots you took for the README, publish, and put the URL in `README.md`.
 
 ---
 
-## 8. LinkedIn post + submission (10 min)
+## 8. Review the Hindi rule text (30 min, needs a Hindi speaker)
+
+The India rule cards, missing-information checks and reviewed questions have Hindi versions in
+`shared/rules/hindi.ts`. I drafted them carefully, keeping the same cautious wording as the
+English, but they have not been checked by a person. Ask someone fluent in Hindi (ideally with a
+legal background) to read them against the English in `shared/rules/employment.ts`. Tests check
+that nothing is missing and that no text says a clause *is* void or tells the reader whether to
+sign, but only a person can check that the meaning is right.
+
+---
+
+## 9. LinkedIn post + submission (10 min)
 
 Draft is in `docs/SUBMISSION.md` §4. Post it, then submit repo URL + live URL + blog URL + post URL.
 Keep one submission attempt in reserve.

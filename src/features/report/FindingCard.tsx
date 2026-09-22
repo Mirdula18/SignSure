@@ -6,7 +6,7 @@ import { useT } from '@/state/preferences';
 import { ClauseTitle, SideBySide } from './SideBySide';
 import { GlossaryText } from '@/features/a11y/GlossaryText';
 import { ReadAloud } from '@/features/a11y/ReadAloud';
-import type { TranslationKey } from '@/i18n';
+import { categoryKey, type TranslationKey } from '@/i18n';
 
 /**
  * One finding, collapsed to a summary until the reader opens it.
@@ -20,14 +20,6 @@ export interface FindingCardProps {
   clause: Clause;
   /** Open on mount, used when a citation sends the reader straight to a clause. */
   defaultOpen?: boolean;
-}
-
-function categoryLabel(category: ClauseFinding['category']): string {
-  return category
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 export function FindingCard({ finding, clause, defaultOpen = false }: FindingCardProps) {
@@ -48,7 +40,7 @@ export function FindingCard({ finding, clause, defaultOpen = false }: FindingCar
     >
       <header className="flex flex-wrap items-center gap-2">
         <RiskBadge risk={finding.risk} />
-        <CategoryBadge label={categoryLabel(finding.category)} />
+        <CategoryBadge label={t(categoryKey(finding.category))} />
         <VerificationBadge status={finding.evidence.status} />
       </header>
 

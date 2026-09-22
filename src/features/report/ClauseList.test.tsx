@@ -51,8 +51,8 @@ describe('ClauseList', () => {
   it('offers only the categories that actually appear, in plain words', () => {
     renderList();
     const options = screen.getAllByRole('option').map((option) => option.textContent);
-    expect(options).toContain('Bond Or Exit Penalty');
-    expect(options).not.toContain('Non Compete');
+    expect(options).toContain('Bond or exit penalty');
+    expect(options).not.toContain('Non-compete');
   });
 
   it('filters by category', async () => {

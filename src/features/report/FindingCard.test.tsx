@@ -11,7 +11,7 @@ describe('FindingCard', () => {
   it('shows risk, category and verification as words, never colour alone', () => {
     renderWithPreferences(<FindingCard finding={finding()} clause={clause()} />);
     expect(screen.getByText('High risk')).toBeInTheDocument();
-    expect(screen.getByText('Notice Period')).toBeInTheDocument();
+    expect(screen.getByText('Notice period')).toBeInTheDocument();
     expect(screen.getAllByText('Verified quote')[0]).toBeVisible();
   });
 

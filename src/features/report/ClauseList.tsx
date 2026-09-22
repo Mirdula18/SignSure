@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { CLAUSE_CATEGORIES, RISK_LEVELS } from '@shared/types';
 import type { AnalysisResult, Clause, ClauseCategory, RiskLevel } from '@shared/types';
 import { normalize } from '@shared/normalize';
+import { categoryKey } from '@/i18n';
 import { useT } from '@/state/preferences';
 import { FindingCard } from './FindingCard';
 
@@ -21,14 +22,6 @@ export interface ClauseListProps {
   analysis: AnalysisResult;
   clauses: readonly Clause[];
   focusedClauseId: string | null;
-}
-
-function categoryLabel(category: ClauseCategory): string {
-  return category
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
 
 export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListProps) {
@@ -83,7 +76,7 @@ export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListPro
             <option value="ALL">{t('clauses.filterAll')}</option>
             {presentCategories.map((value) => (
               <option key={value} value={value}>
-                {categoryLabel(value)}
+                {t(categoryKey(value))}
               </option>
             ))}
           </select>

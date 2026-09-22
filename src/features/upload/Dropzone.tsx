@@ -95,7 +95,10 @@ export function Dropzone({ onFile, disabled = false }: DropzoneProps) {
         type="file"
         accept={ACCEPT_ATTRIBUTE}
         disabled={disabled}
-        aria-describedby={hintId}
+        // The visible button below is the control; the input only receives the file. Left in
+        // the tab order, it was an invisible stop announced as a duplicate of the button.
+        tabIndex={-1}
+        aria-hidden="true"
         className="sr-only"
         onChange={(event) => {
           const file = event.target.files?.item(0);
@@ -108,6 +111,7 @@ export function Dropzone({ onFile, disabled = false }: DropzoneProps) {
       <Button
         variant="primary"
         disabled={disabled}
+        aria-describedby={hintId}
         onClick={() => {
           inputRef.current?.click();
         }}

@@ -54,6 +54,14 @@ describe('PreferencesProvider', () => {
     expect(screen.getByTestId('translated')).toHaveTextContent('SignSure');
   });
 
+  it('sets the page language, so a screen reader uses a Hindi voice for Hindi text', async () => {
+    const user = userEvent.setup();
+    renderProbe();
+    expect(document.documentElement.lang).toBe('en');
+    await user.click(screen.getByRole('button', { name: 'hindi' }));
+    expect(document.documentElement.lang).toBe('hi');
+  });
+
   it('persists changes to sessionStorage only', async () => {
     const user = userEvent.setup();
     renderProbe();

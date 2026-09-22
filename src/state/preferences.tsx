@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   LANGUAGES,
   translate,
@@ -60,6 +68,12 @@ function persist(prefs: Preferences): void {
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<Preferences>(readStored);
+
+  // The page language follows the interface, so a screen reader switches to a Hindi voice
+  // instead of reading Devanagari with English pronunciation (WCAG 3.1.1).
+  useEffect(() => {
+    document.documentElement.lang = prefs.language;
+  }, [prefs.language]);
 
   const setLanguage = useCallback((language: Language) => {
     setPrefs((current) => {

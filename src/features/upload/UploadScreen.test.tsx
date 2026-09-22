@@ -179,10 +179,17 @@ describe('Dropzone', () => {
     expect(input.value).toBe('');
   });
 
-  it('describes the accepted formats and size', () => {
+  it('describes the accepted formats and size on the button a reader actually uses', () => {
     renderWithPreferences(<Dropzone onFile={vi.fn()} />);
-    expect(
-      screen.getByLabelText(/choose a file/i, { selector: 'input' }),
-    ).toHaveAccessibleDescription(/PDF, Word \(\.docx\) or plain text, up to 10 MB/);
+    expect(screen.getByRole('button', { name: /choose a file/i })).toHaveAccessibleDescription(
+      /PDF, Word \(\.docx\) or plain text, up to 10 MB/,
+    );
+  });
+
+  it('keeps the hidden file input out of the tab order, so there is no invisible stop', async () => {
+    const user = userEvent.setup();
+    renderWithPreferences(<Dropzone onFile={vi.fn()} />);
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /choose a file/i }));
   });
 });

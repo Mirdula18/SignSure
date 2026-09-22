@@ -104,6 +104,18 @@ describe('Overview', () => {
     expect(screen.getByText('Leave entitlement')).toBeInTheDocument();
   });
 
+  it('shows the missing information in Hindi to a Hindi reader', () => {
+    sessionStorage.setItem('signsure.prefs', JSON.stringify({ language: 'hi' }));
+    try {
+      renderWithPreferences(<Overview analysis={analysis()} clauseById={byId} />);
+      expect(screen.getByText('छुट्टियों का हक़')).toBeInTheDocument();
+      expect(screen.getByText('मुझे साल में कितनी पेड छुट्टियाँ मिलेंगी?')).toBeInTheDocument();
+      expect(screen.queryByText('Leave entitlement')).not.toBeInTheDocument();
+    } finally {
+      sessionStorage.clear();
+    }
+  });
+
   it('omits the rule and missing-information sections when there is nothing to show', () => {
     renderWithPreferences(
       <Overview analysis={analysis({ ruleHits: [], missingInfo: [] })} clauseById={byId} />,

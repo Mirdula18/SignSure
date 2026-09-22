@@ -1,5 +1,6 @@
+import { localiseMissingInfo } from '@shared/rules';
 import type { AnalysisResult, Clause } from '@shared/types';
-import { useT } from '@/state/preferences';
+import { usePreferences } from '@/state/preferences';
 import { FindingCard } from './FindingCard';
 import { RuleCard } from './RuleCard';
 import type { TranslationKey } from '@/i18n';
@@ -34,7 +35,7 @@ export interface OverviewProps {
 }
 
 export function Overview({ analysis, clauseById }: OverviewProps) {
-  const t = useT();
+  const { language, t } = usePreferences();
 
   const verifiedFindings = analysis.findings.filter(
     (finding) => finding.evidence.status !== 'unverified',
@@ -129,12 +130,17 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
           </h2>
           <p className="prose-measure mt-1 text-sm text-muted">{t('overview.missingIntro')}</p>
           <ul className="mt-3 flex flex-col gap-2">
-            {analysis.missingInfo.map((item) => (
-              <li key={item.ruleId} className="rounded-lg border border-line bg-raised p-3 text-sm">
-                <span className="font-medium text-ink">{item.label}</span>
-                <span className="mt-1 block text-muted">{item.question}</span>
-              </li>
-            ))}
+            {analysis.missingInfo
+              .map((item) => localiseMissingInfo(item, language))
+              .map((item) => (
+                <li
+                  key={item.ruleId}
+                  className="rounded-lg border border-line bg-raised p-3 text-sm"
+                >
+                  <span className="font-medium text-ink">{item.label}</span>
+                  <span className="mt-1 block text-muted">{item.question}</span>
+                </li>
+              ))}
           </ul>
         </section>
       )}

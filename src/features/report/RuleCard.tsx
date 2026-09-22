@@ -1,6 +1,22 @@
+import { localiseHit } from '@shared/rules';
 import type { RuleHit } from '@shared/types';
 import { RiskBadge } from '@/components/Badge';
-import { useT } from '@/state/preferences';
+import type { TranslationKey } from '@/i18n';
+import { usePreferences } from '@/state/preferences';
+
+/** Labels for the values a rule pulls out of a clause, such as a bond amount. */
+const DETAIL_LABELS: Readonly<Record<string, TranslationKey>> = {
+  amount: 'rule.detail.amount',
+  period: 'rule.detail.period',
+  yours: 'rule.detail.yours',
+  theirs: 'rule.detail.theirs',
+};
+
+/** A detail's translated label, or its key if a rule ever adds one this list does not know. */
+function detailLabel(key: string, t: (key: TranslationKey) => string): string {
+  const label = DETAIL_LABELS[key];
+  return label === undefined ? key : t(label);
+}
 
 /**
  * A card from the India rule library.
@@ -10,9 +26,13 @@ import { useT } from '@/state/preferences';
  * statute or judgment it rests on and the date the wording was last checked - which is the
  * difference between legal context a reader can follow up and an assertion they have to
  * take on faith.
+ *
+ * In Hindi the title, message and questions come from the reviewed translation in
+ * `shared/rules/hindi.ts`; the basis stays as cited.
  */
-export function RuleCard({ hit }: { hit: RuleHit }) {
-  const t = useT();
+export function RuleCard({ hit: original }: { hit: RuleHit }) {
+  const { language, t } = usePreferences();
+  const hit = localiseHit(original, language);
 
   return (
     <article className="rounded-xl border border-line bg-surface p-4">
@@ -27,7 +47,7 @@ export function RuleCard({ hit }: { hit: RuleHit }) {
         <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
           {Object.entries(hit.details).map(([key, value]) => (
             <div key={key} className="flex gap-1">
-              <dt className="text-muted capitalize">{key}:</dt>
+              <dt className="text-muted">{detailLabel(key, t)}:</dt>
               <dd className="font-medium text-ink">{value}</dd>
             </div>
           ))}

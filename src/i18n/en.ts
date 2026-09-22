@@ -203,6 +203,10 @@ export const en = {
   'rule.lastReviewed': 'Last reviewed {date}',
   'rule.generalInfo': 'This is general information, not advice about your situation.',
   'rule.questions': 'Questions to ask',
+  'rule.detail.amount': 'Amount',
+  'rule.detail.period': 'Period',
+  'rule.detail.yours': 'Your notice',
+  'rule.detail.theirs': "The company's notice",
 
   /* --------------------------------------- ask ----------------------------------- */
   'ask.heading': 'Ask about your document',

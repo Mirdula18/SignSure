@@ -214,6 +214,10 @@ export const hi: Dictionary = {
   'rule.lastReviewed': 'आख़िरी बार {date} को देखा गया',
   'rule.generalInfo': 'यह आम जानकारी है, आपके मामले के बारे में सलाह नहीं।',
   'rule.questions': 'ये सवाल पूछें',
+  'rule.detail.amount': 'राशि',
+  'rule.detail.period': 'अवधि',
+  'rule.detail.yours': 'आपका नोटिस',
+  'rule.detail.theirs': 'कंपनी का नोटिस',
 
   /* --------------------------------------- ask ----------------------------------- */
   'ask.heading': 'अपने डॉक्यूमेंट के बारे में पूछें',

@@ -129,9 +129,28 @@ describe('RuleCard', () => {
     expect(screen.getByText(/not advice about your situation/i)).toBeInTheDocument();
   });
 
-  it('shows the values the rule pulled out of the clause', () => {
+  it('shows the values the rule pulled out of the clause, under a readable label', () => {
     renderWithPreferences(<RuleCard hit={ruleHit()} />);
     expect(screen.getByText('ninety (90) days')).toBeInTheDocument();
+    expect(screen.getByText('Period:')).toBeInTheDocument();
+  });
+
+  it('shows a detail it has no label for under its own name rather than a wrong one', () => {
+    renderWithPreferences(<RuleCard hit={ruleHit({ details: { months: '24' } })} />);
+    expect(screen.getByText('months:')).toBeInTheDocument();
+  });
+
+  it('shows the reviewed Hindi text to a Hindi reader, with the basis as cited', () => {
+    sessionStorage.setItem('signsure.prefs', JSON.stringify({ language: 'hi' }));
+    try {
+      renderWithPreferences(<RuleCard hit={ruleHit()} />);
+      expect(screen.getByRole('heading', { name: 'लंबी नोटिस अवधि' })).toBeInTheDocument();
+      expect(screen.getByText('क्या प्रोबेशन के दौरान नोटिस अवधि छोटी है?')).toBeInTheDocument();
+      expect(screen.getByText('अवधि:')).toBeInTheDocument();
+      expect(screen.getByText(/Contract terms\./)).toBeInTheDocument();
+    } finally {
+      sessionStorage.clear();
+    }
   });
 
   it('omits the details and questions blocks when a rule has neither', () => {

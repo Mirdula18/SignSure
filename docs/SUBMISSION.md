@@ -14,10 +14,10 @@
 ## 2. Demo script (≈ 3 minutes)
 1. **Hook (15 s):** "Priya got her first offer. It has a bond, a non-compete, and a 90-day notice period on page four. She has two days to sign."
 2. **Upload (15 s):** Try the sample; show "parsed on your device".
-3. **Lens (10 s):** select "I might quit early" + "Future jobs".
-4. **Report (45 s):** top red flag = post-employment non-compete. Open side-by-side: explanation left, original clause 9.2 with page right, highlighted, "Verified quote". Show the rule card with Section 27 basis and "last reviewed".
+3. **Lens (10 s):** select "I might quit early" + "My next job".
+4. **Report (45 s):** red flags = the training bond (clause 5.2) and the post-employment non-compete (clause 10.1). Open side-by-side: explanation left, the original clause right with the quote highlighted and "Verified quote". Show the rule card with its Section 27 basis and "last reviewed".
 5. **Ask (40 s):** "Can they stop me joining a competitor?" → cited answer + "needs professional" guidance. Then "Will they pay for my parents' insurance?" → "Your document doesn't say this" + questions to ask HR.
-6. **Access (20 s):** switch to Hindi + Simple; press Read aloud.
+6. **Access (20 s):** switch to Hindi + Simple (rule cards and category names switch too); press Read aloud.
 7. **Prepare (20 s):** download lawyer prep sheet.
 8. **Close (15 s):** "Every claim is checked against your document. When it doesn't know, it says so. Nothing is stored."
 

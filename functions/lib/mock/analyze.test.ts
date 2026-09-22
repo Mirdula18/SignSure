@@ -20,9 +20,19 @@ const output = z
   .object({
     documentSummary: z.object({
       role: z.string().nullable(),
+      startDate: z.string().nullable(),
+      noticePeriod: z.string().nullable(),
+      probation: z.string().nullable(),
       bondOrPenalty: z.string().nullable(),
     }),
-    findings: z.array(z.object({ clauseId: z.string(), title: z.string(), quote: z.string() })),
+    findings: z.array(
+      z.object({
+        clauseId: z.string(),
+        category: z.string(),
+        title: z.string(),
+        quote: z.string(),
+      }),
+    ),
   })
   .parse(mockAnalyze(analyzeUserPrompt(CLAUSES)));
 
@@ -65,5 +75,20 @@ describe('the mock model on the sample letter', () => {
 
   it('reports the role without the employer name run on after it', () => {
     expect(output.documentSummary.role).toBe('Associate Software Engineer');
+  });
+
+  it('reports the joining date, not the date the letter was written', () => {
+    expect(output.documentSummary.startDate).toBe('20 October 2026');
+  });
+
+  it('reports the notice period and probation as the letter states them', () => {
+    expect(output.documentSummary.noticePeriod).toBe('ninety (90) days');
+    expect(output.documentSummary.probation).toBe('six (6) months');
+  });
+
+  it('files the clause that keeps original certificates under document retention', () => {
+    const custody = CLAUSES.find((clause) => /original certificates/i.test(clause.text));
+    const finding = output.findings.find((candidate) => candidate.clauseId === custody?.id);
+    expect(finding?.category).toBe('DOCUMENT_RETENTION');
   });
 });

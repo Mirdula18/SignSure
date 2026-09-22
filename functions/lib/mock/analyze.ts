@@ -29,16 +29,8 @@ const PATTERNS: readonly Pattern[] = [
     whyItMatters:
       'It could limit where you can work next, which matters most early in a career when moves are frequent.',
   },
-  {
-    category: 'BOND_OR_EXIT_PENALTY',
-    risk: 'HIGH',
-    match: /liquidated damages|minimum period of|service bond|training cost/i,
-    title: 'Money owed if you leave early',
-    explanation:
-      'This clause asks you to stay for a minimum period and to pay a stated amount to the company if you leave before that.',
-    whyItMatters:
-      'It puts a price on changing jobs, and the amount is often large compared with an early-career salary.',
-  },
+  // Checked before the bond pattern: a clause keeping your originals until a minimum period
+  // is served mentions that period, but what it does is hold your documents.
   {
     category: 'DOCUMENT_RETENTION',
     risk: 'HIGH',
@@ -48,6 +40,16 @@ const PATTERNS: readonly Pattern[] = [
       'This clause says the company will keep your original certificates and identity documents until a condition is met.',
     whyItMatters:
       'Without your originals it is harder to take up another job or apply for further study.',
+  },
+  {
+    category: 'BOND_OR_EXIT_PENALTY',
+    risk: 'HIGH',
+    match: /liquidated damages|minimum period of|service bond|training cost/i,
+    title: 'Money owed if you leave early',
+    explanation:
+      'This clause asks you to stay for a minimum period and to pay a stated amount to the company if you leave before that.',
+    whyItMatters:
+      'It puts a price on changing jobs, and the amount is often large compared with an early-career salary.',
   },
   {
     category: 'NOTICE_PERIOD',
@@ -224,9 +226,16 @@ export function mockAnalyze(userPrompt: string): Record<string, unknown> {
       documentType: clauses.length > 0 ? 'Letter of appointment' : null,
       employer: firstMatch(clauses, /[A-Z][A-Za-z]+ Technologies Private Limited/),
       role: firstMatch(clauses, /position of ([A-Z][A-Za-z ]+?)(?= (?:with|at|in)\b|[,.])/),
-      startDate: firstMatch(clauses, /\d{1,2} [A-Z][a-z]+ \d{4}/),
-      noticePeriod: firstMatch(clauses, /(ninety|sixty|thirty|\d{1,3}) \(?\d{0,3}\)? ?days/i),
-      probation: firstMatch(clauses, /probation for a period of [^.]{0,40}/i),
+      // The joining date, not the date the letter was written.
+      startDate: firstMatch(
+        clauses,
+        /(?:effective from|joining on|join on|date of joining is) (\d{1,2} [A-Z][a-z]+ \d{4})/i,
+      ),
+      noticePeriod: firstMatch(clauses, /(?:ninety|sixty|thirty|\d{1,3}) \(?\d{0,3}\)? ?days/i),
+      probation: firstMatch(
+        clauses,
+        /probation for a period of ([^.,]{3,40}?)(?= from| starting|[.,])/i,
+      ),
       bondOrPenalty: amountAbout(
         clauses,
         /liquidated damages|training bond|service bond|minimum period/i,

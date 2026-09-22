@@ -177,7 +177,7 @@ POST /api/ask { clauses, question, history?: last 4 Q/A, language, readingLevel 
 Server post-rule: if `status === 'answered'` but zero citations verify → downgrade to `not_in_document` with message "I couldn't find support for an answer in your document."
 
 ### 4.4 Compare
-Deterministic first: pair clauses across A/B by category (from prior analysis) then by token-set similarity (Jaccard ≥ 0.35). Gemini only summarises *meaningful* differences per pair and returns quotes from both sides, each verified.
+Deterministic first: pair clauses across A/B by matching label, then by token-set similarity (Jaccard ≥ 0.35), with each clause tokenised once (DECISIONS D42). Gemini only summarises *meaningful* differences per pair and returns quotes from both sides, each verified.
 
 ### 4.5 Prepare
 Input: findings + ruleHits + unanswered questions. Output: checklist, questions for HR, questions for a lawyer, missing information, documents to bring. Rule-engine questions are always included verbatim.

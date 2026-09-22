@@ -104,6 +104,36 @@ describe('Overview', () => {
     expect(screen.getByText('Leave entitlement')).toBeInTheDocument();
   });
 
+  it('says which clauses the AI summary came from, so each value can be checked', () => {
+    const base = analysis();
+    renderWithPreferences(
+      <Overview
+        analysis={{
+          ...base,
+          documentSummary: { ...base.documentSummary, sourceClauseIds: ['c002', 'c404'] },
+        }}
+        clauseById={byId}
+      />,
+    );
+    // c404 is not in the document, so it is left out rather than shown as a broken reference.
+    expect(
+      screen.getByText(
+        'Summarised by the AI from Clause 9.2. Check each value against those clauses before relying on it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('still marks the summary as the AI reading when it names no source clause', () => {
+    const base = analysis();
+    renderWithPreferences(
+      <Overview
+        analysis={{ ...base, documentSummary: { ...base.documentSummary, sourceClauseIds: [] } }}
+        clauseById={byId}
+      />,
+    );
+    expect(screen.getByText(/^Summarised by the AI\. Check each value/)).toBeInTheDocument();
+  });
+
   it('shows the missing information in Hindi to a Hindi reader', () => {
     sessionStorage.setItem('signsure.prefs', JSON.stringify({ language: 'hi' }));
     try {

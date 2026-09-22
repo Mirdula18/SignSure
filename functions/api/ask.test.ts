@@ -304,6 +304,49 @@ describe('toAskResult', () => {
     });
   });
 
+  it('replaces a needs_professional answer that cites nothing verifiable with a fixed reply', () => {
+    // Found in review: "see a lawyer" prose about the contract, backed by no verified quote,
+    // used to reach the reader unchanged.
+    const result = toAskResult(
+      model({
+        status: 'needs_professional',
+        answer: 'Your bond of Rs. 5,00,000 is certainly unenforceable.',
+        citations: [{ clauseId: 'c001', quote: 'a bond of Rs. 5,00,000 is payable' }],
+        missingInfo: ['Bond terms'],
+        suggestedQuestions: [],
+      }),
+      CLAUSES,
+    );
+    expect(result.status).toBe('needs_professional');
+    expect(result.answer).toMatch(/question for a qualified lawyer/);
+    expect(result.answer).not.toContain('5,00,000');
+    expect(result.citations).toEqual([]);
+    expect(result.missingInfo).toEqual(['Bond terms']);
+    expect(result.suggestedQuestions).toHaveLength(2);
+  });
+
+  it('keeps the model questions on an unsupported needs_professional reply when it gave some', () => {
+    const result = toAskResult(
+      model({ status: 'needs_professional', citations: [], suggestedQuestions: ['Ask HR?'] }),
+      CLAUSES,
+    );
+    expect(result.suggestedQuestions).toEqual(['Ask HR?']);
+  });
+
+  it('gives a Hindi reader the fixed replies in Hindi', () => {
+    const downgraded = toAskResult(model({ citations: [] }), CLAUSES, 'hi');
+    expect(downgraded.answer).toMatch(/^आपके डॉक्यूमेंट में यह नहीं लिखा है।/);
+    expect(downgraded.missingInfo[0]).toMatch(/\p{Script=Devanagari}/u);
+    expect(downgraded.suggestedQuestions.every((q) => /\p{Script=Devanagari}/u.test(q))).toBe(true);
+
+    const unsupported = toAskResult(
+      model({ status: 'needs_professional', citations: [] }),
+      CLAUSES,
+      'hi',
+    );
+    expect(unsupported.answer).toMatch(/वकील/);
+  });
+
   it('passes needs_professional through, keeping verified citations and dropping unverified ones', () => {
     const quote = 'you shall not join any business that competes with the Company';
     const result = toAskResult(

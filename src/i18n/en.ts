@@ -17,6 +17,8 @@ export const en = {
   'app.disclaimerLink': 'Read the full disclaimer',
   'app.howItWorks': 'How SignSure works',
   'app.privacy': 'Privacy',
+  'app.privacyNote':
+    "Your file never leaves your browser. The text of its clauses, and any question you ask, is sent through SignSure's server to Google's Gemini API to be explained; SignSure does not store or log it, and Google's Gemini API terms apply to it. The security check uses Cloudflare Turnstile. Only your language and reading-level choices are saved in this browser, and Clear everything removes the document from this page.",
   'app.footerNote':
     'SignSure is an educational tool. It does not create a lawyer-client relationship and its output may be incomplete or wrong. Laws differ by state and change over time. Please consult a qualified advocate before relying on any interpretation.',
   'app.startOver': 'Clear everything',
@@ -42,9 +44,9 @@ export const en = {
   'home.trust2Title': 'Says when it does not know',
   'home.trust2Body':
     'If your document is silent on something, SignSure says so and tells you what to ask instead.',
-  'home.trust3Title': 'Your document stays on your device',
+  'home.trust3Title': 'Your file stays on your device',
   'home.trust3Body':
-    'The file is read inside your browser. Only the clause text is sent for analysis, and nothing is stored.',
+    "The file is read inside your browser. Only its clause text is sent, through our server, to Google's Gemini API to be explained. Nothing is stored.",
   'home.cta': 'Check my offer letter',
   'home.sampleCta': 'Try with a sample',
 
@@ -116,6 +118,7 @@ export const en = {
   'report.tabsLabel': 'Report sections',
 
   'report.loading': 'Reading your clauses and checking every quote…',
+  'report.ready': 'Your report is ready.',
   'report.loadingStage1': 'Reading your clauses…',
   'report.loadingStage2': 'Checking each quote against your document…',
   'report.loadingStage3': 'Applying the India rule library…',
@@ -131,6 +134,10 @@ export const en = {
   /* ----------------------------------- overview --------------------------------- */
   'overview.summaryHeading': 'At a glance',
   'overview.notStated': 'Not stated',
+  'overview.summarySources':
+    'Summarised by the AI from {clauses}. Check each value against those clauses before relying on it.',
+  'overview.summaryNoSources':
+    'Summarised by the AI. Check each value against your document before relying on it.',
   'overview.documentType': 'Document type',
   'overview.employer': 'Employer',
   'overview.role': 'Role',

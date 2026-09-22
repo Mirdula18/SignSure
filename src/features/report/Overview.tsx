@@ -48,6 +48,14 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
   );
 
   const total = analysis.findings.length;
+  const sources = analysis.documentSummary.sourceClauseIds
+    .map((id) => clauseById(id))
+    .filter((clause): clause is Clause => clause !== undefined)
+    .map((clause) =>
+      clause.label === null
+        ? t('clauses.paragraph', { order: clause.order + 1 })
+        : t('clauses.clauseLabel', { label: clause.label }),
+    );
 
   return (
     <div className="flex flex-col gap-10">
@@ -70,6 +78,13 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
             );
           })}
         </dl>
+
+        {/* The summary is the model's reading, not a checked quote, so it says where it came from. */}
+        <p className="mt-3 text-xs text-muted">
+          {sources.length > 0
+            ? t('overview.summarySources', { clauses: sources.join(', ') })
+            : t('overview.summaryNoSources')}
+        </p>
 
         {analysis.partial ? (
           // Not an alert: it describes the report, it is not an event the reader must act on now.

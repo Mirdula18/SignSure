@@ -2,12 +2,10 @@ import { useCallback, useId, useState } from 'react';
 import { LIMITS } from '@shared/limits';
 import { Button } from '@/components/Button';
 import { Dropzone } from './Dropzone';
-import { TurnstileWidget, type TurnstileState } from './TurnstileWidget';
 import { parseFile, parseText, type ParseFailureReason } from '@/features/parsing/parseDocument';
 import { SAMPLE_LABEL, SAMPLE_OFFER_LETTER } from '@/sample/offerLetter';
 import { useAppState } from '@/state/appState';
 import { useT } from '@/state/preferences';
-import { createSession } from '@/api/client';
 import type { TranslationKey } from '@/i18n';
 
 /**
@@ -33,36 +31,13 @@ function errorKey(reason: ParseFailureReason): TranslationKey {
 
 export function UploadScreen() {
   const t = useT();
-  const { state, dispatch } = useAppState();
+  const { dispatch } = useAppState();
   const [mode, setMode] = useState<Mode>('file');
   const [pasted, setPasted] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ParseError | null>(null);
   const statusId = useId();
   const pasteId = useId();
-
-  const handleToken = useCallback(
-    (turnstileToken: string) => {
-      createSession(turnstileToken)
-        .then((session) => {
-          dispatch({ type: 'sessionReady', session });
-        })
-        .catch(() => {
-          // The upload screen stays usable: parsing is local, and the token is only needed once
-          // the reader asks for an analysis. Recording the failure means that request can say so
-          // immediately rather than waiting for a session that is never coming.
-          dispatch({ type: 'sessionFailed' });
-        });
-    },
-    [dispatch],
-  );
-
-  const handleTurnstileState = useCallback(
-    (turnstileState: TurnstileState) => {
-      if (turnstileState === 'failed') dispatch({ type: 'sessionFailed' });
-    },
-    [dispatch],
-  );
 
   const accept = useCallback(
     (result: ReturnType<typeof parseText>) => {
@@ -168,10 +143,6 @@ export function UploadScreen() {
           <p className="mt-1 text-ink">{t(errorKey(error.reason), error.detail)}</p>
         </div>
       )}
-
-      {state.session === null ? (
-        <TurnstileWidget onToken={handleToken} onStateChange={handleTurnstileState} />
-      ) : null}
     </section>
   );
 }

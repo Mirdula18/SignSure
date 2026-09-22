@@ -6,6 +6,7 @@ import { DisclaimerBanner } from '@/components/DisclaimerBanner';
 import { SkipLink } from '@/components/SkipLink';
 import { Button } from '@/components/Button';
 import { LensPicker } from '@/features/lenses/LensPicker';
+import { SessionGate } from '@/features/session/SessionGate';
 import { UploadScreen } from '@/features/upload/UploadScreen';
 import { LazyReportScreen, loadReportScreen } from '@/lazyScreens';
 import { useAppState } from '@/state/appState';
@@ -101,6 +102,13 @@ export default function App() {
           >
             <LazyReportScreen />
           </Suspense>
+        ) : null}
+
+        {/* One fixed slot, so the security check survives the move from concerns to report. */}
+        {state.document !== null && state.session === null ? (
+          <div className="no-print mt-6">
+            <SessionGate />
+          </div>
         ) : null}
 
         {state.stage !== 'upload' ? (

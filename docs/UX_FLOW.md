@@ -11,7 +11,7 @@
 
 ### 1. Home
 - Headline: "Understand every clause before you sign."
-- Three trust points: *Shows its sources* · *Says when it doesn't know* · *Your document stays on your device*.
+- Three trust points: *Shows its sources* · *Says when it doesn't know* · *Your file stays on your device*.
 - Primary CTA: "Check my offer letter". Secondary: "Try with a sample".
 - Disclaimer link.
 

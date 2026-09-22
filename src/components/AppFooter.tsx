@@ -9,6 +9,11 @@ export function AppFooter() {
           {t('app.disclaimerShort')}
         </h2>
         <p className="prose-measure">{t('app.footerNote')}</p>
+
+        <h2 id="privacy" className="mt-6 mb-2 text-base font-semibold text-ink">
+          {t('app.privacy')}
+        </h2>
+        <p className="prose-measure">{t('app.privacyNote')}</p>
       </div>
     </footer>
   );

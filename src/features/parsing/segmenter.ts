@@ -107,21 +107,44 @@ function headingOf(line: string): { label: string | null; heading: string | null
   return null;
 }
 
-/** A short lead-in before the body text ("Non-competition. For a period of...") is a heading. */
+/** Words that make a lead-in a sentence rather than a title. */
+const SENTENCE_VERB = /\b(shall|will|may|must|is|are|was|were|agrees?|be)\b/i;
+
+/**
+ * A short lead-in before the body text ("Non-competition. For a period of...") is a heading.
+ *
+ * It has to look like a title: five words at most and no verb. Without that, the first sentence
+ * of an ordinary clause became its heading, cut at the full stop in "Rs." ("Your annual Cost to
+ * Company (CTC) shall be Rs").
+ */
 function headingFromRest(rest: string): string | null {
-  const match = /^([A-Z][^.]{2,60})\.\s+\S/.exec(rest.trim());
-  return match?.[1] ?? null;
+  const lead = /^([A-Z][^.]{2,40})\.\s+\S/.exec(rest.trim())?.[1];
+  if (lead === undefined) return null;
+  if (lead.split(/\s+/).length > 5 || SENTENCE_VERB.test(lead)) return null;
+  return lead;
 }
 
 function capitalise(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
+/** Short joining words stay lower case inside a title: "Probation and Confirmation". */
+const MINOR_WORD = /^(a|an|and|as|at|by|for|in|of|on|or|the|to|with)$/;
+
 function titleCase(line: string): string {
   return line
     .toLowerCase()
-    .replace(/\b[a-z]/g, (character) => character.toUpperCase())
-    .trim();
+    .trim()
+    .split(/\s+/)
+    .map((word, index) =>
+      index > 0 && MINOR_WORD.test(word)
+        ? word
+        : word.replace(
+            /(^|-)([a-z])/g,
+            (_match, joiner: string, character: string) => `${joiner}${character.toUpperCase()}`,
+          ),
+    )
+    .join(' ');
 }
 
 function blockText(block: Block): string {
@@ -212,6 +235,53 @@ function toBlocks(lines: readonly SourceLine[]): Block[] {
   return blocks.filter((block) => blockText(block).length > 0);
 }
 
+/**
+ * The title of a numbered section, or null when the block is an ordinary clause.
+ *
+ * A section title is one short line with no sentence punctuation, immediately followed by its
+ * own first sub-clause ("2. PROBATION AND CONFIRMATION" then "2.1 ..."). Requiring the child
+ * keeps a short real clause such as "7) Termination." from being swallowed.
+ */
+function sectionTitle(block: Block, next: Block | undefined): string | null {
+  if (block.label === null || next?.label == null) return null;
+  if (!next.label.startsWith(`${block.label}.`) || block.lines.length !== 1) return null;
+
+  // The block's text minus its own label, so "2. TITLE" and "Section 4 TITLE" both work.
+  const escaped = block.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rest = blockText(block).replace(new RegExp(`^${escaped}[.):]?\\s*`, 'i'), '');
+  if (rest.length === 0 || rest.length > 80 || /[.;:!?]$/.test(rest)) return null;
+  if (rest.split(/\s+/).length > 8) return null;
+  return ALL_CAPS_HEADING.test(rest) ? titleCase(rest) : rest;
+}
+
+/**
+ * Turns numbered section titles into the heading of the clauses under them.
+ *
+ * Why: left alone, every section title became a clause with nothing in it to explain or cite -
+ * thirteen of the sample letter's thirty-nine clauses were titles.
+ */
+function foldSectionHeadings(blocks: readonly Block[]): Block[] {
+  const folded: Block[] = [];
+  let section: { label: string; title: string } | null = null;
+
+  blocks.forEach((block, index) => {
+    const title = sectionTitle(block, blocks[index + 1]);
+    if (title !== null && block.label !== null) {
+      section = { label: block.label, title };
+      return;
+    }
+    if (block.label !== null && !block.label.startsWith(`${section?.label ?? ''}.`)) {
+      section = null;
+    }
+    folded.push(
+      section !== null && block.label !== null && block.heading === null
+        ? { ...block, heading: section.title }
+        : block,
+    );
+  });
+  return folded;
+}
+
 /** True for a short block that cannot stand on its own: a sign-off, a salutation, a tail. */
 function isFragment(text: string, minChars: number): boolean {
   if (text.length >= minChars) return false;
@@ -255,7 +325,7 @@ export function segment(lines: readonly SourceLine[], options: SegmentOptions = 
   const minChars = options.minClauseChars ?? DEFAULT_MIN_CLAUSE_CHARS;
   const maxChars = options.maxClauseChars ?? LIMITS.maxClauseChars;
 
-  const blocks = mergeShortBlocks(toBlocks(lines), minChars);
+  const blocks = mergeShortBlocks(foldSectionHeadings(toBlocks(lines)), minChars);
 
   const clauses: Clause[] = [];
   for (const block of blocks) {

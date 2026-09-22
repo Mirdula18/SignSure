@@ -94,6 +94,110 @@ describe('segment', () => {
     expect(clauses[0]?.label).toBe('9.2');
   });
 
+  it.each([
+    '3.1 Your annual Cost to Company (CTC) shall be Rs. 6,50,000 per annum, paid monthly.',
+    '1.1 Your appointment shall be effective from 20 October 2026. Please report by 9 a.m.',
+    '12.1 This agreement is governed by the laws of India. Courts at Pune have jurisdiction.',
+  ])('does not mistake the first sentence of a clause for its heading: %s', (line) => {
+    // The lead-in rule is for titles like "Non-competition.", not sentences that happen to
+    // contain a full stop, as "Rs." does.
+    expect(segment(linesFromText(line))[0]?.heading).toBeNull();
+  });
+
+  it('turns a numbered section title into the heading of the clauses under it', () => {
+    const clauses = segment(
+      linesFromText(
+        [
+          '2. PROBATION AND CONFIRMATION',
+          '2.1 You will be on probation for a period of six (6) months from the date of joining.',
+          '2.2 During probation, either party may end this appointment with seven days notice.',
+          '3. The Employee shall devote their full working time to the business of the Company.',
+        ].join('\n'),
+      ),
+    );
+    expect(clauses.map((item) => [item.label, item.heading])).toEqual([
+      ['2.1', 'Probation and Confirmation'],
+      ['2.2', 'Probation and Confirmation'],
+      // A new top-level clause ends the section, so its title does not leak onwards.
+      ['3', null],
+    ]);
+  });
+
+  it('keeps a short numbered clause that has no sub-clauses as a clause', () => {
+    const clauses = segment(
+      linesFromText(['4. HOURS OF WORK', '5. The Employee shall keep all records.'].join('\n')),
+    );
+    expect(clauses.map((item) => item.label)).toEqual(['4', '5']);
+  });
+
+  it('lets a sub-clause keep its own lead-in heading inside a section', () => {
+    const clauses = segment(
+      linesFromText(
+        [
+          '10. RESTRICTIONS AFTER YOU LEAVE',
+          '10.1 Non-competition. For a period of twenty-four (24) months you shall not join a competitor.',
+          '10.2 For a period of twelve (12) months you shall not solicit any customer of the Company.',
+        ].join('\n'),
+      ),
+    );
+    expect(clauses.map((item) => item.heading)).toEqual([
+      'Non-competition',
+      'Restrictions After You Leave',
+    ]);
+  });
+
+  it.each([
+    ['ends like a sentence', '2. The Company and the Employee agree to the following terms:'],
+    [
+      'is too long to be a title',
+      '2. This part explains what happens to your salary while on leave',
+    ],
+    ['runs onto a second line', '2. Probation and\nconfirmation of employment'],
+  ])('keeps a numbered line that %s as a clause, even with sub-clauses', (_kind, line) => {
+    const clauses = segment(
+      linesFromText(`${line}\n2.1 You will be on probation for six (6) months from joining.`),
+    );
+    expect(clauses.map((item) => item.label)).toEqual(['2', '2.1']);
+  });
+
+  it('keeps a short numbered line followed by ordinary text as a clause', () => {
+    const clauses = segment(
+      linesFromText(
+        [
+          '4. HOURS OF WORK',
+          '',
+          'Normal working hours are 9:30 a.m. to 6:30 p.m., Monday to Friday.',
+        ].join('\n'),
+      ),
+    );
+    expect(clauses[0]?.label).toBe('4');
+  });
+
+  it('folds a named section title too', () => {
+    const clauses = segment(
+      linesFromText(
+        [
+          'SECTION 4 DEFINITIONS',
+          'Section 4.1 "Company" means Nimbus Technologies Private Limited.',
+        ].join('\n'),
+      ),
+    );
+    expect(clauses.map((item) => [item.label, item.heading])).toEqual([
+      ['Section 4.1', 'Definitions'],
+    ]);
+  });
+
+  it('keeps a section title that is already in title case as written', () => {
+    const clauses = segment(
+      linesFromText(
+        ['1. Place of Posting', '1.1 You will be posted at Chennai and may be transferred.'].join(
+          '\n',
+        ),
+      ),
+    );
+    expect(clauses[0]?.heading).toBe('Place of Posting');
+  });
+
   it('keeps sub-items with their parent clause rather than splitting them out', () => {
     const clauses = segment(
       linesFromText(

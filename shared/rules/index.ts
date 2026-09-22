@@ -1,7 +1,9 @@
 import { normalize } from '../normalize';
 import type { Clause, ClauseCategory, MissingInfoHit, RuleHit } from '../types';
 import { RISK_ORDER } from '../types';
+import type { Language } from '../schemas';
 import { appliesToCategory, EMPLOYMENT_RULES, MISSING_INFO_RULES } from './employment';
+import { MISSING_INFO_TEXT_HI, NOT_STATED_SUFFIX, RULE_TEXT_HI } from './hindi';
 import type { Rule, RuleContext, RuleVerdict } from './types';
 
 export { EMPLOYMENT_RULES, MISSING_INFO_RULES } from './employment';
@@ -85,11 +87,39 @@ export function findMissingInfo(clauses: readonly Clause[]): MissingInfoHit[] {
   }));
 }
 
+/** The reader-facing text of a rule hit: what `localiseHit` translates. */
+type HitText = Pick<RuleHit, 'ruleId' | 'title' | 'message' | 'questions'>;
+
+/**
+ * A rule hit's title, message and questions in the reader's language.
+ *
+ * An analysis carries the English, and cards translate it when they are shown, so switching
+ * language on a finished report needs no second call to the model. The translation is reviewed
+ * text from `./hindi`, never generated. A rule without one keeps its English rather than
+ * disappearing.
+ */
+export function localiseHit<T extends HitText>(hit: T, language: Language): T {
+  const hindi = language === 'hi' ? RULE_TEXT_HI[hit.ruleId] : undefined;
+  if (hindi === undefined) return hit;
+  return { ...hit, title: hindi.title, message: hindi.message, questions: [...hindi.questions] };
+}
+
+/** A missing-information item in the reader's language, falling back to English. */
+export function localiseMissingInfo(item: MissingInfoHit, language: Language): MissingInfoHit {
+  const hindi = language === 'hi' ? MISSING_INFO_TEXT_HI[item.ruleId] : undefined;
+  return hindi === undefined ? item : { ...item, label: hindi.label, question: hindi.question };
+}
+
+/** "Notice period: not stated in this document.", in the reader's language. */
+export function notStatedLine(item: MissingInfoHit, language: Language): string {
+  return `${localiseMissingInfo(item, language).label}: ${NOT_STATED_SUFFIX[language]}`;
+}
+
 /** Every reviewed question the rule library produced, de-duplicated, for the prep sheet. */
-export function ruleQuestions(hits: readonly RuleHit[]): string[] {
+export function ruleQuestions(hits: readonly RuleHit[], language: Language = 'en'): string[] {
   const questions = new Set<string>();
   for (const hit of hits) {
-    for (const question of hit.questions) questions.add(question);
+    for (const question of localiseHit(hit, language).questions) questions.add(question);
   }
   return [...questions];
 }

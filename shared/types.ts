@@ -198,11 +198,3 @@ export type ApiErrorCode =
   | 'MODEL_INVALID_OUTPUT'
   | 'UPSTREAM_TIMEOUT'
   | 'INTERNAL';
-
-export interface ApiErrorBody {
-  error: {
-    code: ApiErrorCode;
-    message: string;
-    retryable: boolean;
-  };
-}

@@ -11,6 +11,7 @@ import type {
   AnalysisResult,
   ApiErrorCode,
   AskResult,
+  QaTurn,
   Clause,
   CompareResult,
   PrepareResult,
@@ -115,7 +116,7 @@ export async function askQuestion(
   input: {
     clauses: readonly Clause[];
     question: string;
-    history?: readonly { question: string; answer: string }[];
+    history?: readonly QaTurn[];
   } & Preferences,
   options?: RequestOptions,
 ): Promise<AskResult> {

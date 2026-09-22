@@ -1,21 +1,13 @@
 import { LIMITS } from '../../shared/limits';
 import { analyzeModelOutputSchema, analyzeRequestSchema } from '../../shared/schemas';
 import { findMissingInfo, runRules } from '../../shared/rules';
-import type {
-  AnalysisResult,
-  Clause,
-  ClauseFinding,
-  DocumentSummary,
-  VerificationStats,
-} from '../../shared/types';
-import { buildVerifiedQuote, isPresentable } from '../../shared/verify';
+import type { AnalysisResult, Clause, ClauseFinding, DocumentSummary } from '../../shared/types';
+import { buildVerifiedQuote, isPresentable, summarizeVerification } from '../../shared/verify';
 import { required } from '../../shared/arrays';
 import { rankFindings, type Lens } from '../../shared/lenses';
-import type { Env } from '../lib/env';
-import { isMockMode } from '../lib/env';
+import { isMockMode, type Env } from '../lib/env';
 import { createGeminiClient } from '../lib/gemini';
-import { errorResponse, json } from '../lib/http';
-import { parseBody } from '../lib/http';
+import { errorResponse, json, parseBody } from '../lib/http';
 import { analyzeSystemPrompt, analyzeUserPrompt } from '../lib/prompts';
 import { checkRateLimit, rateLimitHeaders } from '../lib/ratelimit';
 import { ANALYZE_SCHEMA } from '../lib/responseSchemas';
@@ -155,19 +147,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     findings: ranked,
     ruleHits,
     missingInfo,
-    stats: countVerification(ranked),
+    stats: summarizeVerification(ranked.map((finding) => finding.evidence)),
     // Some batches failed: say so, rather than presenting part of a document as all of it.
     partial: failures.length > 0,
   };
 
   return json(result, 200, rateLimitHeaders(rate));
 };
-
-function countVerification(findings: readonly ClauseFinding[]): VerificationStats {
-  const stats: VerificationStats = { verified: 0, fuzzy: 0, unverified: 0 };
-  for (const finding of findings) stats[finding.evidence.status] += 1;
-  return stats;
-}
 
 /**
  * Normalises the model's summary.

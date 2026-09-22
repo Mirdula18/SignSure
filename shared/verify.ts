@@ -7,7 +7,7 @@ import {
   type NormalizedText,
   type Token,
 } from './normalize';
-import type { VerificationStatus, VerifiedQuote } from './types';
+import type { VerificationStats, VerificationStatus, VerifiedQuote } from './types';
 
 /**
  * Quote verification: the control that turns "the model said so" into "the document says so".
@@ -215,12 +215,8 @@ export function isPresentable(quote: VerifiedQuote): boolean {
 }
 
 /** Counts of each verification outcome, shown to the user as a trust summary. */
-export function summarizeVerification(quotes: readonly VerifiedQuote[]): {
-  verified: number;
-  fuzzy: number;
-  unverified: number;
-} {
-  const stats = { verified: 0, fuzzy: 0, unverified: 0 };
+export function summarizeVerification(quotes: readonly VerifiedQuote[]): VerificationStats {
+  const stats: VerificationStats = { verified: 0, fuzzy: 0, unverified: 0 };
   for (const quote of quotes) stats[quote.status] += 1;
   return stats;
 }

@@ -82,7 +82,6 @@ export const analyzeRequestSchema = z.object({
   ...sharedRequestFields,
   lenses: z.array(lensSchema).max(LENSES.length),
 });
-export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 
 export const askRequestSchema = z.object({
   ...sharedRequestFields,
@@ -97,7 +96,6 @@ export const askRequestSchema = z.object({
     .max(LIMITS.maxHistoryTurns)
     .optional(),
 });
-export type AskRequest = z.infer<typeof askRequestSchema>;
 
 /**
  * Compare carries two documents, so the character budget is checked across both.
@@ -124,7 +122,6 @@ export const compareRequestSchema = z
       });
     }
   });
-export type CompareRequest = z.infer<typeof compareRequestSchema>;
 
 export const prepareRequestSchema = z.object({
   ...sharedRequestFields,
@@ -141,12 +138,10 @@ export const prepareRequestSchema = z.object({
     .max(LIMITS.maxClauses),
   unansweredQuestions: z.array(z.string().max(LIMITS.maxQuestionChars)).max(20),
 });
-export type PrepareRequest = z.infer<typeof prepareRequestSchema>;
 
 export const sessionRequestSchema = z.object({
   turnstileToken: z.string().min(1).max(2_048),
 });
-export type SessionRequest = z.infer<typeof sessionRequestSchema>;
 
 /* ------------------------------------------------------------------ *
  * Model output. Deliberately permissive about length and strict about
@@ -187,7 +182,6 @@ export const analyzeModelOutputSchema = z.object({
     )
     .max(LIMITS.maxClauses),
 });
-export type AnalyzeModelOutput = z.infer<typeof analyzeModelOutputSchema>;
 
 export const askModelOutputSchema = z.object({
   status: z.enum(['answered', 'not_in_document', 'needs_professional']),
@@ -196,7 +190,6 @@ export const askModelOutputSchema = z.object({
   missingInfo: z.array(z.string().max(400)).max(8).default([]),
   suggestedQuestions: z.array(z.string().max(400)).max(5).default([]),
 });
-export type AskModelOutput = z.infer<typeof askModelOutputSchema>;
 
 export const compareModelOutputSchema = z.object({
   changes: z
@@ -212,7 +205,6 @@ export const compareModelOutputSchema = z.object({
     )
     .max(200),
 });
-export type CompareModelOutput = z.infer<typeof compareModelOutputSchema>;
 
 export const prepareModelOutputSchema = z.object({
   checklistBeforeSigning: z.array(z.string().max(400)).max(20).default([]),
@@ -221,7 +213,6 @@ export const prepareModelOutputSchema = z.object({
   missingInformation: z.array(z.string().max(400)).max(20).default([]),
   documentsToBring: z.array(z.string().max(400)).max(20).default([]),
 });
-export type PrepareModelOutput = z.infer<typeof prepareModelOutputSchema>;
 
 /* ------------------------------------------------------------------ *
  * Server responses. The client re-validates these so a proxy or a

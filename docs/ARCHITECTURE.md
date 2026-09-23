@@ -19,7 +19,7 @@ flowchart TB
     AS[/api/ask]
     CP[/api/compare]
     LP[/api/prepare]
-    L[lib: gemini · verify · rules · ratelimit · turnstile · session]
+    L[lib: gemini · verify · rules · ratelimit · session]
   end
   C -- clauses JSON --> M --> AN & AS & CP & LP
   AN & AS & CP & LP --> L --> G[(Gemini API)]
@@ -33,7 +33,7 @@ signsure/
 ├─ functions/                     # Cloudflare Pages Functions (server)
 │  ├─ _middleware.ts              # security headers, JSON error envelope, body size cap
 │  ├─ api/
-│  │  ├─ session.ts               # POST: verify Turnstile → issue signed session token
+│  │  ├─ session.ts               # POST: issue a signed, IP-bound session token
 │  │  ├─ analyze.ts               # POST: classify + explain clauses
 │  │  ├─ ask.ts                   # POST: grounded Q&A
 │  │  ├─ compare.ts               # POST: compare two clause sets
@@ -44,7 +44,6 @@ signsure/
 │     ├─ gemini.ts                # typed Gemini wrapper, retries, timeouts, mock mode
 │     ├─ prompts.ts               # system prompts + builders
 │     ├─ responseSchemas.ts       # Gemini response schemas
-│     ├─ turnstile.ts
 │     ├─ session.ts               # HMAC-signed short-lived token
 │     ├─ ratelimit.ts             # KV fixed-window limiter, hashed IP keys
 │     ├─ http.ts                  # json(), error(), parseBody(zod)
@@ -64,7 +63,7 @@ signsure/
 │  ├─ components/                 # generic UI (Button, Tabs, Badge, Dialog, Skeleton)
 │  ├─ features/
 │  │  ├─ upload/                  # Dropzone, paste text, sample
-│  │  ├─ session/                 # SessionGate, TurnstileWidget
+│  │  ├─ session/                 # SessionGate
 │  │  ├─ parsing/                 # pdfParser.ts, docxParser.ts, segmenter.ts
 │  │  ├─ lenses/
 │  │  ├─ report/                  # Overview, ClauseList, SideBySide, RedFlagCard, RuleCard
@@ -149,9 +148,9 @@ export interface AskResult {
 ## 4. Request flow
 
 ### 4.1 Session
-1. Once a document is loaded, `App` mounts `SessionGate`, which renders Turnstile and on success calls `POST /api/session { turnstileToken }`. It stays mounted across the concern and report screens until a session exists.
+1. Once a document is loaded, `App` mounts `SessionGate`, which calls `POST /api/session` with an empty body. It renders nothing, and stays mounted across the concern and report screens until a session exists. Nothing is proved to get a token: the endpoint is open, and what limits abuse is the per-address rate limit on it and on every route behind it.
 2. Server verifies with Cloudflare siteverify, returns `{ token }`: an HMAC-SHA256 signed payload `{ iat, exp (30 min), ipHash }`.
-3. All other `/api/*` calls send `Authorization: Bearer <token>`. Prevents direct scripted abuse of the Gemini proxy without re-solving Turnstile per call.
+3. All other `/api/*` calls send `Authorization: Bearer <token>`. The token is bound to a hashed IP and expires after thirty minutes, so a script cannot spread one address's budget across many callers.
 
 ### 4.2 Analyze
 ```
@@ -228,4 +227,4 @@ Gemini wrapper: 25 s timeout via `AbortController`; one retry on 429/5xx with ji
 Token efficiency: send text not PDF bytes; one batched classification call; `temperature: 0.2`; bounded `maxOutputTokens`; thinking budget low for classification; context caching (stretch) for multi-question sessions.
 
 ## 11. Configuration
-`wrangler.toml` binds `RATE_LIMIT_KV`. Secrets: `GEMINI_API_KEY`, `TURNSTILE_SECRET_KEY`, `SESSION_SECRET`, `IP_HASH_SALT`. Vars: `GEMINI_MODEL` (default Flash, verify latest ID at build time), `MOCK_GEMINI`, `ALLOWED_ORIGIN`. Client: `VITE_TURNSTILE_SITE_KEY`.
+`wrangler.toml` binds `RATE_LIMIT_KV`. Secrets: `GEMINI_API_KEY`, `SESSION_SECRET`, `IP_HASH_SALT`. Vars: `GEMINI_MODEL` (default Flash, verify latest ID at build time), `GEMINI_THINKING`, `MOCK_GEMINI`, `ALLOWED_ORIGIN`. The client needs no build-time variables.

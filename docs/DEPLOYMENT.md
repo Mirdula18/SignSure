@@ -3,7 +3,6 @@
 ## 1. Prerequisites
 - Cloudflare account, GitHub repo, Node 20+, `npx wrangler login`.
 - Gemini API key from Google AI Studio.
-- Turnstile widget created in the Cloudflare dashboard (domain = your `*.pages.dev` + `localhost`).
 
 ## 2. `wrangler.toml`
 ```toml
@@ -27,13 +26,12 @@ id = "<created-with: npx wrangler kv namespace create RATE_LIMIT_KV>"
 `.dev.vars.example` (copy to `.dev.vars`, never commit):
 ```
 GEMINI_API_KEY=
-TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 SESSION_SECRET=change-me-32-bytes-min
 IP_HASH_SALT=change-me
 MOCK_GEMINI=true
 ALLOWED_ORIGIN=http://localhost:5173
 ```
-`.env.local` (frontend): `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` (Cloudflare's always-pass test key).
+The frontend needs no build-time variables.
 
 Scripts:
 ```json
@@ -46,7 +44,7 @@ Scripts:
 `vite.config.ts` proxies `/api` → `http://localhost:8788`. If the watch combo is awkward, use `preview:full` for full-stack checks.
 
 ## 4. Production deploy
-**Option A – Git integration (recommended):** Pages → Create project → connect GitHub repo → build command `npm run build`, output `dist`, env var `NODE_VERSION=20`. Add secrets under Settings → Variables and Secrets (type *Secret*): `GEMINI_API_KEY`, `TURNSTILE_SECRET_KEY`, `SESSION_SECRET`, `IP_HASH_SALT`. Add build variable `VITE_TURNSTILE_SITE_KEY`. Bind KV namespace `RATE_LIMIT_KV`.
+**Option A – Git integration (recommended):** Pages → Create project → connect GitHub repo → build command `npm run build`, output `dist`, env var `NODE_VERSION=20`. Add secrets under Settings → Variables and Secrets (type *Secret*): `GEMINI_API_KEY`, `SESSION_SECRET`, `IP_HASH_SALT`. Bind KV namespace `RATE_LIMIT_KV`. With `wrangler.toml` in the repo it, not the dashboard, is the source of truth for vars and bindings; secrets cannot live in it and are merged in at runtime.
 
 **Option B – CLI:**
 ```bash
@@ -59,7 +57,7 @@ npx wrangler pages secret put GEMINI_API_KEY --project-name signsure
 - `GET /api/health` → `{ ok: true }` (no config values leaked).
 - Security headers present (securityheaders.com or `curl -I`).
 - Full journey with the sample document on a real phone.
-- Turnstile works on the production domain.
+- `POST /api/session` returns a token, and an eleventh call within ten minutes returns 429.
 - Lighthouse (mobile): Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95.
 
 ## 6. Limits to remember
@@ -72,5 +70,4 @@ npx wrangler pages secret put GEMINI_API_KEY --project-name signsure
 |---|---|
 | `/api/*` returns HTML | Functions not detected; ensure `functions/` at repo root and deploy via Pages, not static upload only |
 | pdf.js worker fails in prod | Check CSP `worker-src 'self' blob:` and `?url` worker import |
-| Turnstile "invalid domain" | Add the production hostname to the widget |
 | 500 with `MODEL_INVALID_OUTPUT` | Inspect schema mismatch in local mock; ensure `responseSchema` matches Zod |

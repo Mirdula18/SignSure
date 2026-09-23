@@ -22,7 +22,7 @@
 - Language + reading level selectors here and in header.
 
 ### 3. Concerns (lenses)
-- Turnstile widget (managed) starts here and keeps running into the report if needed; Analyse waits for it.
+- The session request starts here and continues into the report if needed; Analyse waits for it. Nothing is shown: there is no check for the reader to pass.
 Checkbox cards (multi-select, keyboard accessible):
 - I might quit early (notice, bond, exit costs)
 - Future jobs (non-compete, non-solicit, confidentiality)

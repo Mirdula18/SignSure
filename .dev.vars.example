@@ -8,9 +8,6 @@ GEMINI_MODEL=gemini-3.8-flash
 # minimal (default) or auto. Minimal keeps a whole-document analysis inside its deadline.
 GEMINI_THINKING=minimal
 
-# Cloudflare's documented always-passes test secret. Replace in production only.
-TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-
 # Any random string >= 32 bytes. Generate: node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"
 SESSION_SECRET=local-development-session-secret-change-me
 IP_HASH_SALT=local-development-ip-salt-change-me

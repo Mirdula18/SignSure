@@ -10,7 +10,7 @@
 | Threat | Impact | Control |
 |---|---|---|
 | API key theft | Quota/billing abuse | Key only as Cloudflare secret; never in `VITE_*` vars; CI grep check for `AIza` patterns; `.dev.vars` gitignored |
-| Proxy abuse / denial-of-wallet | Quota exhaustion | Turnstile → signed session token; KV rate limits; payload caps; per-request batch cap |
+| Proxy abuse / denial-of-wallet | Quota exhaustion | Signed session token bound to a hashed IP; KV rate limits on every route including session issuing; payload caps; per-request batch cap. **No human check**, so the limits are the only defence: keep an eye on Gemini usage if the URL is shared widely |
 | Prompt injection in document | Model ignores rules, fake citations | Delimited `<document>`, explicit "data not instructions" rule, strict JSON schema, server-side quote verification, rule text never model-generated |
 | Prompt injection in question | Same | Question length cap (500 chars), same rules, verification |
 | XSS via model or document text | Session/UI compromise | React escaping only; **no `dangerouslySetInnerHTML`** (ESLint rule); strict CSP; highlight via text splitting, not HTML |
@@ -28,10 +28,8 @@
 | Name | Where |
 |---|---|
 | `GEMINI_API_KEY` | `wrangler pages secret put` / dashboard → Encrypted |
-| `TURNSTILE_SECRET_KEY` | secret |
 | `SESSION_SECRET` | secret (32+ random bytes) |
 | `IP_HASH_SALT` | secret |
-| `VITE_TURNSTILE_SITE_KEY` | public build var (site keys are public by design) |
 
 ### 3.2 Session token
 `base64url(payload).base64url(HMAC_SHA256(SESSION_SECRET, payload))`, payload `{ iat, exp, ih }` where `ih` = first 16 hex of `SHA-256(IP_HASH_SALT + ip)`. Verified with Web Crypto `crypto.subtle` using constant-time compare. Lifetime 30 min.
@@ -54,7 +52,7 @@ Keys: `rl:{route}:{ipHash}:{windowStart}` with `expirationTtl`. KV is eventually
 The authoritative copy is `public/_headers`, pinned by `tests/headers.test.ts`:
 ```
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; frame-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

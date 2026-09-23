@@ -11,7 +11,6 @@ ALLOWED_ORIGIN = "https://signsure.pages.dev"
 
 # Secrets are NEVER in this file. Set them with:
 #   npx wrangler pages secret put GEMINI_API_KEY --project-name signsure
-#   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name signsure
 #   npx wrangler pages secret put SESSION_SECRET --project-name signsure
 #   npx wrangler pages secret put IP_HASH_SALT --project-name signsure
 

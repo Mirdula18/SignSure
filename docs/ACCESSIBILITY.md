@@ -37,7 +37,7 @@ Accessibility here is also about *comprehension*: plain language, reading levels
 - Errors describe the fix: "This file is 14 MB. Please upload a file under 10 MB."
 - Consistent help (3.2.6): "How SignSure works" and "Disclaimer" links in the same place on every screen.
 - No redundant entry (3.3.7): lenses and language persist across tabs.
-- Turnstile uses the managed/invisible mode; no cognitive puzzle (3.3.8 accessible authentication).
+- Nothing stands between the reader and the document: no sign-in, no CAPTCHA, no puzzle to solve (3.3.8 accessible authentication).
 
 ## 6. Comprehension features
 - **Reading level:** Simple / Standard toggle, passed to the model.

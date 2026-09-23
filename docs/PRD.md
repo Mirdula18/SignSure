@@ -51,7 +51,7 @@ SignSure adds what a chat box lacks: code-verified citations with side-by-side s
 | F7 | India rule library red flags (deterministic) | Must |
 | F8 | Concern lenses re-ranking the report | Must |
 | F9 | Lawyer prep sheet + signing checklist, export (print/copy/.md) | Must |
-| F10 | Secure proxy: Turnstile, rate limit, validation, headers | Must |
+| F10 | Secure proxy: signed session, rate limit, validation, headers | Must |
 | F11 | Reading-level toggle (Simple / Standard) | Should |
 | F12 | Hindi explanations (+ one more Indian language) | Should |
 | F13 | Read aloud (Web Speech API) | Should |

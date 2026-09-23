@@ -5,9 +5,11 @@
  * a KV that behaves like the real one (string values, `expirationTtl`) without the real runtime.
  * Only the surface `functions/lib/ratelimit.ts` actually uses is implemented.
  */
-import type { KvPutOptions, MinimalKv } from '../functions/lib/kv';
+// Extensions included because this file is in the Vite config's own module graph, which its
+// native config loader resolves without extension guessing.
+import type { KvPutOptions, MinimalKv } from '../functions/lib/kv.ts';
 
-export type { KvPutOptions, MinimalKv } from '../functions/lib/kv';
+export type { KvPutOptions, MinimalKv } from '../functions/lib/kv.ts';
 
 interface Entry {
   value: string;

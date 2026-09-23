@@ -107,7 +107,10 @@ The golden set in [`tests/fixtures/contracts/`](tests/fixtures/contracts) has si
 
 ## Quick start
 
-Requires Node 20.19 or newer.
+Requires Node 20.19 or newer. `npm install` prints `EBADENGINE` warnings for `wrangler`,
+`miniflare`, `pdfjs-dist` and `@testing-library/jest-dom`, which all ask for Node 22. They are
+warnings, not errors: pdf.js runs in the browser, wrangler and miniflare are only used to deploy
+(on Node 22), and the test suite passes on 20.19. CI runs Node 22 (DECISIONS D04, D05).
 
 ```bash
 npm install

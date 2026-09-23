@@ -36,7 +36,7 @@ const output = z
   })
   .parse(mockAnalyze(analyzeUserPrompt(CLAUSES)));
 
-/** The one finding mock mode plants on purpose (see DECISIONS D19). */
+/** The one finding mock mode plants on purpose. */
 const isPlanted = (title: string): boolean => title.startsWith('Demo:');
 const genuine = output.findings.filter((finding) => !isPlanted(finding.title));
 

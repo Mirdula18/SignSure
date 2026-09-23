@@ -204,7 +204,7 @@ describe('toAskResult', () => {
   });
 
   // THE most important test in the repository. A fluent, confident answer with nothing in the
-  // document behind it is exactly the failure SignSure exists to prevent (CLAUDE.md rule 4), so
+  // document behind it is exactly the failure SignSure exists to prevent, so
   // it must be replaced with "your document does not say this", not shown with a warning badge.
   it('downgrades an answer to not_in_document when every citation fails verification', () => {
     const result = toAskResult(

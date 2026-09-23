@@ -194,7 +194,7 @@ function amountAbout(clauses: readonly PromptClause[], topic: RegExp): string | 
  * A plausible analysis built from the clauses in the prompt, for `MOCK_GEMINI=true`.
  *
  * Quotes are cut from the real clause text so they pass verification, plus one that cannot, so
- * the "couldn't verify" path is always on screen in demos (DECISIONS D19).
+ * the "couldn't verify" path is always on screen in demos.
  */
 export function mockAnalyze(userPrompt: string): Record<string, unknown> {
   const clauses = clausesFromPrompt(userPrompt);

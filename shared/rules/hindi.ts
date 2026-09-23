@@ -8,8 +8,8 @@
  * whether to sign. `basis` citations stay in English: a reader, or their lawyer, needs the
  * statute and case names exactly as written.
  *
- * Drafted for this build and awaiting review by a Hindi-speaking legal reviewer (see
- * HUMAN_TASKS.md). `hindi.test.ts` checks that every rule and every question is covered.
+ * Drafted for this build and awaiting review by a Hindi-speaking legal reviewer.
+ * `hindi.test.ts` checks that every rule and every question is covered.
  */
 
 export interface RuleTextHi {

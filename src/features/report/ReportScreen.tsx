@@ -210,7 +210,7 @@ export function ReportScreen() {
       language,
       readingLevel,
       // Only findings whose quote checked out: their categories decide which reviewed rule
-      // questions the sheet gets, and an unverified claim must not steer that (DECISIONS D21).
+      // questions the sheet gets, and an unverified claim must not steer that.
       findings: state.analysis.findings
         .filter((finding) => isPresentable(finding.evidence))
         .map((finding) => ({

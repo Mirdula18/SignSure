@@ -96,7 +96,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return withSecurityHeaders(await context.next());
   } catch {
     // Deliberately swallows the error rather than logging it: a stack trace from a route that
-    // was handling clause text could contain that text (see CLAUDE.md rule 7).
+    // was handling clause text could contain that text.
     return withSecurityHeaders(errorResponse('INTERNAL'));
   }
 };

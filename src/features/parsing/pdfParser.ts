@@ -89,9 +89,13 @@ export function linesFromTextItems(items: readonly unknown[], page: number): Sou
 
 /** Loads pdf.js and points it at its worker. Separated so tests can stub the whole module. */
 async function loadPdfJs(): Promise<typeof PdfJs> {
-  const pdfjs = await import('pdfjs-dist');
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.mjs?url')).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  // Fetched together rather than one after the other. The worker is copied into the build as
+  // is, never minified by Vite, so it has to be the minified build: 375 kB gzip instead of 466.
+  const [pdfjs, worker] = await Promise.all([
+    import('pdfjs-dist'),
+    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+  ]);
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   return pdfjs;
 }
 

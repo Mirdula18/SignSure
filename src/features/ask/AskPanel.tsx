@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { LIMITS } from '@shared/limits';
 import { suggestedQuestionKeys } from '@shared/lenses';
 import type { AskStatus, Clause } from '@shared/types';
@@ -40,6 +40,11 @@ const STATUS_STYLE: Readonly<Record<AskStatus, string>> = {
 };
 
 export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) {
+  // Built once per document, not once per answer on every keystroke in the question box.
+  const clauseById = useMemo(
+    () => new Map(clauses.map((clause) => [clause.id, clause])),
+    [clauses],
+  );
   const t = useT();
   const { state } = useAppState();
   const [question, setQuestion] = useState('');
@@ -127,7 +132,7 @@ export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) 
               <AnswerCard
                 key={entry.id}
                 entry={entry}
-                clauses={clauses}
+                clauseById={clauseById}
                 onCitationFollowed={onCitationFollowed}
               />
             ))
@@ -140,13 +145,12 @@ export function AskPanel({ clauses, onAsk, onCitationFollowed }: AskPanelProps) 
 
 interface AnswerCardProps {
   entry: QaEntry;
-  clauses: readonly Clause[];
+  clauseById: ReadonlyMap<string, Clause>;
   onCitationFollowed: (clauseId: string) => void;
 }
 
-function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
+function AnswerCard({ entry, clauseById, onCitationFollowed }: AnswerCardProps) {
   const t = useT();
-  const byId = new Map(clauses.map((clause) => [clause.id, clause]));
 
   return (
     <article className="rounded-xl border border-line bg-surface p-4">
@@ -182,7 +186,7 @@ function AnswerCard({ entry, clauses, onCitationFollowed }: AnswerCardProps) {
               </h5>
               <ul className="mt-2 flex flex-col gap-2">
                 {entry.result.citations.map((citation) => {
-                  const clause = byId.get(citation.clauseId);
+                  const clause = clauseById.get(citation.clauseId);
                   const label = clause?.label ?? citation.clauseId;
                   return (
                     <li

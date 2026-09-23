@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import type { Clause, CompareResult } from '@shared/types';
 import { Button } from '@/components/Button';
 import { VerificationBadge } from '@/components/Badge';
@@ -40,7 +40,7 @@ export function CompareTab({
   const [parseError, setParseError] = useState<ParseFailure | null>(null);
   const statusId = useId();
 
-  const byIdA = new Map(clausesA.map((clause) => [clause.id, clause]));
+  const byIdA = useMemo(() => new Map(clausesA.map((clause) => [clause.id, clause])), [clausesA]);
 
   const handleFile = useCallback(
     (file: File) => {

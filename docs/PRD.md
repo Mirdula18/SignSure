@@ -102,7 +102,7 @@ SignSure adds what a chat box lacks: code-verified citations with side-by-side s
 - 100% correct refusal on the golden set's unanswerable questions.
 - Report for a 5-page document in < 15 s (p50) on Gemini Flash.
 - Lighthouse Accessibility ≥ 95; axe: 0 serious/critical.
-- Initial JS bundle < 180 KB gzip.
+- Initial JS bundle < 120 KB gzip.
 
 ## 9. Scope and safety language (use consistently)
 - Header banner: "SignSure explains your document. It isn't legal advice."

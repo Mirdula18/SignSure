@@ -1,12 +1,5 @@
 import type { z } from 'zod';
-import {
-  analyzeResponseSchema,
-  askResponseSchema,
-  compareResponseSchema,
-  prepareResponseSchema,
-  sessionResponseSchema,
-  apiErrorSchema,
-} from '@shared/schemas';
+import type * as SchemaModule from '@shared/schemas';
 import type {
   AnalysisResult,
   ApiErrorCode,
@@ -27,7 +20,26 @@ import type { ReadingLevel } from '@/state/preferences';
  * looks redundant - we wrote both ends - but it is what stops a stale cached deployment, a
  * proxy that rewrites JSON, or a future server change from feeding the UI a shape it cannot
  * render. A validation failure becomes a normal error the user can act on, not a blank screen.
+ *
+ * The schemas are imported on first use, not at the top. They bring Zod, which is about a third
+ * of the app's JavaScript, and the first screen - choosing a document - never talks to the API.
+ * Each request starts loading them alongside its fetch, so the wait overlaps the network.
  */
+
+type Schemas = typeof SchemaModule;
+
+/** Picks the schema a response must match, once the schema module has loaded. */
+type SchemaPicker<S extends z.ZodType> = (schemas: Schemas) => S;
+
+/**
+ * A chunk that fails to load - the connection dropped, or a deploy replaced it - is reported as
+ * a retryable failure, like any other network error, rather than as a raw import error.
+ */
+function loadSchemas(): Promise<Schemas> {
+  return import('@shared/schemas').catch(() => {
+    throw new ApiError('INTERNAL', true);
+  });
+}
 
 export class ApiError extends Error {
   constructor(
@@ -65,7 +77,7 @@ export function clearCachedResponses(): void {
 async function cachedPost<S extends z.ZodType>(
   path: string,
   body: unknown,
-  schema: S,
+  pick: SchemaPicker<S>,
   token: string,
   options?: RequestOptions,
 ): Promise<z.infer<S>> {
@@ -79,7 +91,7 @@ async function cachedPost<S extends z.ZodType>(
     return hit as z.infer<S>;
   }
 
-  const data = await post(path, body, schema, token, options);
+  const data = await post(path, body, pick, token, options);
   responseCache.set(key, data);
   for (const oldest of responseCache.keys()) {
     if (responseCache.size <= MAX_CACHED_RESPONSES) break;
@@ -91,10 +103,13 @@ async function cachedPost<S extends z.ZodType>(
 async function post<S extends z.ZodType>(
   path: string,
   body: unknown,
-  schema: S,
+  pick: SchemaPicker<S>,
   token: string | null,
   options: RequestOptions = {},
 ): Promise<z.infer<S>> {
+  const schemas = loadSchemas();
+  // Awaited only on some paths below; a failed load must not surface as an unhandled rejection.
+  schemas.catch(() => undefined);
   let response: Response;
   try {
     response = await fetch(path, {
@@ -112,15 +127,15 @@ async function post<S extends z.ZodType>(
     throw new ApiError('INTERNAL', true);
   }
 
-  if (!response.ok) throw await toApiError(response);
+  if (!response.ok) throw await toApiError(response, await schemas);
 
   const raw: unknown = await response.json().catch(() => null);
-  const parsed = schema.safeParse(raw);
+  const parsed = pick(await schemas).safeParse(raw);
   if (!parsed.success) throw new ApiError('MODEL_INVALID_OUTPUT', true);
   return parsed.data;
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
+async function toApiError(response: Response, { apiErrorSchema }: Schemas): Promise<ApiError> {
   const retryAfter = Number.parseInt(response.headers.get('retry-after') ?? '', 10);
   const raw: unknown = await response.json().catch(() => null);
   const parsed = apiErrorSchema.safeParse(raw);
@@ -142,7 +157,7 @@ export interface Preferences {
 export async function createSession(
   options?: RequestOptions,
 ): Promise<{ token: string; expiresAt: number }> {
-  return post('/api/session', {}, sessionResponseSchema, null, options);
+  return post('/api/session', {}, (schemas) => schemas.sessionResponseSchema, null, options);
 }
 
 export async function analyzeDocument(
@@ -150,7 +165,13 @@ export async function analyzeDocument(
   input: { clauses: readonly Clause[]; lenses: readonly Lens[] } & Preferences,
   options?: RequestOptions,
 ): Promise<AnalysisResult> {
-  return cachedPost('/api/analyze', input, analyzeResponseSchema, token, options);
+  return cachedPost(
+    '/api/analyze',
+    input,
+    (schemas) => schemas.analyzeResponseSchema,
+    token,
+    options,
+  );
 }
 
 export async function askQuestion(
@@ -162,7 +183,7 @@ export async function askQuestion(
   } & Preferences,
   options?: RequestOptions,
 ): Promise<AskResult> {
-  return cachedPost('/api/ask', input, askResponseSchema, token, options);
+  return cachedPost('/api/ask', input, (schemas) => schemas.askResponseSchema, token, options);
 }
 
 export async function compareDocuments(
@@ -170,7 +191,13 @@ export async function compareDocuments(
   input: { clausesA: readonly Clause[]; clausesB: readonly Clause[] } & Preferences,
   options?: RequestOptions,
 ): Promise<CompareResult> {
-  return cachedPost('/api/compare', input, compareResponseSchema, token, options);
+  return cachedPost(
+    '/api/compare',
+    input,
+    (schemas) => schemas.compareResponseSchema,
+    token,
+    options,
+  );
 }
 
 export async function preparePack(
@@ -183,5 +210,11 @@ export async function preparePack(
   } & Preferences,
   options?: RequestOptions,
 ): Promise<PrepareResult> {
-  return cachedPost('/api/prepare', input, prepareResponseSchema, token, options);
+  return cachedPost(
+    '/api/prepare',
+    input,
+    (schemas) => schemas.prepareResponseSchema,
+    token,
+    options,
+  );
 }

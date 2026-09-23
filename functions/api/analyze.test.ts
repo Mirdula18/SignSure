@@ -20,7 +20,7 @@ import {
 import { analyzeSystemPrompt, analyzeUserPrompt } from '../lib/prompts';
 import { ANALYZE_SCHEMA } from '../lib/responseSchemas';
 import { hashIp, issueSession } from '../lib/session';
-import { batchClauses, onRequestPost } from './analyze';
+import { batchClauses, mapWithLimit, onRequestPost } from './analyze';
 
 /**
  * `createGeminiClient` is wrapped rather than replaced: by default it is the real thing, so mock
@@ -591,5 +591,64 @@ describe('POST /api/analyze refusals', () => {
     expect(await errorCode(limited)).toBe('RATE_LIMITED');
     expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
     expect(createGeminiClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('mapWithLimit', () => {
+  /** A task that finishes only when the test says so, recording when it started. */
+  function controllable() {
+    const started: number[] = [];
+    const finish = new Map<number, (value: string) => void>();
+    const run = (item: number) =>
+      new Promise<string>((resolve) => {
+        started.push(item);
+        finish.set(item, resolve);
+      });
+    const release = async (item: number) => {
+      finish.get(item)?.(`done ${String(item)}`);
+      // Let the freed worker pick up its next item.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    return { started, run, release };
+  }
+
+  it('returns nothing for no items, without starting any work', async () => {
+    const run = vi.fn(() => Promise.resolve('unused'));
+    expect(await mapWithLimit([], 4, run)).toEqual([]);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('never runs more than the limit at once', async () => {
+    const { started, run, release } = controllable();
+    const pending = mapWithLimit([1, 2, 3, 4, 5, 6], 4, run);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(started).toEqual([1, 2, 3, 4]);
+
+    for (const item of [1, 2, 3, 4, 5, 6]) await release(item);
+    await pending;
+  });
+
+  it('starts the next item as soon as any one finishes, not when the slowest does', async () => {
+    const { started, run, release } = controllable();
+    const pending = mapWithLimit([1, 2, 3, 4, 5], 4, run);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Item 1 is slow. Item 2 finishing is enough for item 5 to start.
+    await release(2);
+    expect(started).toEqual([1, 2, 3, 4, 5]);
+
+    for (const item of [1, 3, 4, 5]) await release(item);
+    await pending;
+  });
+
+  it('returns results in input order, whatever order they finish in', async () => {
+    const { run, release } = controllable();
+    const pending = mapWithLimit([1, 2, 3], 2, run);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await release(2);
+    await release(3);
+    await release(1);
+    expect(await pending).toEqual(['done 1', 'done 2', 'done 3']);
   });
 });

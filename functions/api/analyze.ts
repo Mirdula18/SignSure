@@ -46,17 +46,29 @@ export function batchClauses(
   return batches;
 }
 
-/** Runs batches with bounded concurrency, because Workers cap subrequests per invocation. */
-async function mapWithLimit<T, R>(
+/**
+ * Runs `run` over `items` with at most `limit` in flight, because Workers cap subrequests per
+ * invocation.
+ *
+ * A pool rather than fixed windows: the next batch starts the moment any batch finishes, so one
+ * slow batch holds up only its own slot instead of every batch queued behind its window.
+ * Results come back in input order whatever order they finish in.
+ */
+export async function mapWithLimit<T, R>(
   items: readonly T[],
   limit: number,
   run: (item: T) => Promise<R>,
 ): Promise<R[]> {
   const results: R[] = [];
-  for (let index = 0; index < items.length; index += limit) {
-    const window = items.slice(index, index + limit);
-    results.push(...(await Promise.all(window.map(run))));
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await run(required(items, index));
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
 }
 

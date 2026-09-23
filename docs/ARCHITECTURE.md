@@ -218,7 +218,7 @@ Gemini wrapper: 25 s timeout via `AbortController`; one retry on 429/5xx with ji
 ## 10. Performance budgets
 | Budget | Target |
 |---|---|
-| Initial JS (gzip) | < 180 KB (pdf.js, mammoth lazy-loaded) |
+| Initial JS (gzip) | < 120 KB (pdf.js, mammoth, Zod and the report lazy-loaded; measured 91.5 KB) |
 | LCP (4G mobile) | < 2.5 s |
 | Analyze 5-page doc | < 15 s p50 |
 | Functions CPU per request | well under 10 ms free-tier cap: no parsing server-side, only validation, string matching, rules |

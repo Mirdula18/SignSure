@@ -22,7 +22,9 @@ vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: pdf.GlobalWorkerOptions,
 }));
 
-vi.mock('pdfjs-dist/build/pdf.worker.mjs?url', () => ({ default: '/assets/pdf.worker.mjs' }));
+vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({
+  default: '/assets/pdf.worker.min.mjs',
+}));
 
 const mammoth = vi.hoisted(() => ({ extractRawText: vi.fn() }));
 vi.mock('mammoth', () => ({ default: mammoth, ...mammoth }));
@@ -92,7 +94,7 @@ describe('parsePdf', () => {
   it('points pdf.js at a bundled worker rather than a CDN', async () => {
     mockPdf([[LONG_LINE]]);
     await parsePdf(new File([PDF_BYTES], 'offer.pdf'));
-    expect(pdf.GlobalWorkerOptions.workerSrc).toBe('/assets/pdf.worker.mjs');
+    expect(pdf.GlobalWorkerOptions.workerSrc).toBe('/assets/pdf.worker.min.mjs');
   });
 
   it('asks pdf.js not to fetch anything, because the file is already in memory', async () => {

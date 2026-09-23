@@ -13,12 +13,14 @@ import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 
 const DIST = 'dist';
-const BUDGET_KB = 180;
+const BUDGET_KB = 120;
 
 /** Strings that only appear if the library itself was bundled in. */
 const LAZY_LIBRARY_MARKERS = [
   { name: 'pdf.js', marker: 'PDFDocumentLoadingTask' },
   { name: 'mammoth', marker: 'extractRawText' },
+  // Response validation only runs after the first API call, so Zod is fetched with it.
+  { name: 'Zod', marker: 'ZodError' },
 ];
 
 function gzipKb(path) {
@@ -79,6 +81,15 @@ if (leaked.length > 0) {
   console.error(
     `\nFAIL: ${leaked.map((l) => l.name).join(' and ')} ended up in the initial load. ` +
       'These must stay behind a dynamic import.',
+  );
+  process.exit(1);
+}
+
+// Vite copies the pdf.js worker as is, so importing the full build ships 2.2 MB unminified.
+const fullWorker = assets.filter((f) => /^pdf\.worker-.*\.mjs$/.test(f));
+if (fullWorker.length > 0) {
+  console.error(
+    `\nFAIL: ${fullWorker.join(', ')} is the unminified pdf.js worker. Import pdf.worker.min.mjs.`,
   );
   process.exit(1);
 }

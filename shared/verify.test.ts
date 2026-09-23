@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildVerifiedQuote, isPresentable, summarizeVerification, verifyQuote } from './verify';
 import type { VerifiedQuote } from './types';
+import { LIMITS } from './limits';
+import { normalize, normalizeWithMap, tokenize } from './normalize';
 
 const SOFT_HYPHEN = String.fromCodePoint(0x00ad);
 
@@ -256,5 +258,116 @@ describe('summarizeVerification', () => {
 
   it('returns zeros for an empty list', () => {
     expect(summarizeVerification([])).toEqual({ verified: 0, fuzzy: 0, unverified: 0 });
+  });
+});
+
+/**
+ * The fuzzy search skips windows by a word-count bound and computes only a band of the
+ * edit-distance table. Both are there for speed and must never change an answer, so this runs
+ * the plain, unoptimised search from before them over many generated quotes and compares.
+ */
+describe('verifyQuote agrees with an unoptimised reference search', () => {
+  function plainDistance(a: readonly string[], b: readonly string[]): number {
+    let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+    for (const [aIndex, aToken] of a.entries()) {
+      const current = [aIndex + 1];
+      for (const [bIndex, bToken] of b.entries()) {
+        current.push(
+          Math.min(
+            (previous[bIndex + 1] ?? 0) + 1,
+            (current[bIndex] ?? 0) + 1,
+            (previous[bIndex] ?? 0) + (aToken === bToken ? 0 : 1),
+          ),
+        );
+      }
+      previous = current;
+    }
+    return previous[b.length] ?? 0;
+  }
+
+  function referenceVerify(clauseText: string, quote: string) {
+    const needle = normalize(quote.trim());
+    const haystack = normalizeWithMap(clauseText);
+    const exact = haystack.text.indexOf(needle);
+    if (exact !== -1) {
+      return {
+        status: 'verified',
+        start: haystack.start[exact],
+        end: haystack.end[exact + needle.length - 1],
+        score: 1,
+      };
+    }
+    const words = tokenize(haystack.text);
+    const target = tokenize(needle).map((token) => token.value);
+    let best: { start: number; end: number; score: number; gap: number } | null = null;
+    for (let start = 0; start < words.length; start += 1) {
+      for (let size = Math.max(1, target.length - 2); size <= target.length + 2; size += 1) {
+        const window = words.slice(start, start + size);
+        if (window.length < size) break;
+        const longest = Math.max(size, target.length);
+        const score =
+          1 -
+          plainDistance(
+            window.map((token) => token.value),
+            target,
+          ) /
+            longest;
+        const gap = Math.abs(size - target.length);
+        if (score < 0.9) continue;
+        if (best && (score < best.score || (score === best.score && gap >= best.gap))) continue;
+        best = { start: window[0]!.start, end: window.at(-1)!.end, score, gap };
+      }
+    }
+    if (!best) return { status: 'unverified', score: 0 };
+    return {
+      status: 'fuzzy',
+      start: haystack.start[best.start],
+      end: haystack.end[best.end - 1],
+      score: best.score,
+    };
+  }
+
+  /** Small deterministic generator, so a failure always reproduces. */
+  function generator(seed: number) {
+    let state = seed;
+    return (limit: number) => {
+      state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return state % limit;
+    };
+  }
+
+  // A small vocabulary on purpose: repeated words make many windows look alike, which is where
+  // a wrong shortcut would show.
+  const VOCABULARY =
+    'the employee shall give notice of ninety days to company and may not join any competitor bond'.split(
+      ' ',
+    );
+
+  it('returns the same status, score and range for 400 generated quotes', () => {
+    const next = generator(20260924);
+    for (let round = 0; round < 400; round += 1) {
+      const clause = Array.from(
+        { length: 40 + next(80) },
+        () => VOCABULARY[next(VOCABULARY.length)],
+      ).join(' ');
+      const words = clause.split(' ');
+      const from = next(words.length - 12);
+      const quoteWords = words.slice(from, from + 10 + next(20));
+      // Zero to four edits: substitutions, deletions and insertions of vocabulary words.
+      for (let edit = next(5); edit > 0; edit -= 1) {
+        const at = next(quoteWords.length);
+        const word = VOCABULARY[next(VOCABULARY.length)]!;
+        const kind = next(3);
+        if (kind === 0) quoteWords[at] = word;
+        else if (kind === 1) quoteWords.splice(at, 1);
+        else quoteWords.splice(at, 0, word);
+      }
+      const quote = quoteWords.join(' ');
+      if (normalize(quote).length < LIMITS.minQuoteChars) continue;
+
+      expect(verifyQuote(clause, quote), `round ${String(round)}: "${quote}"`).toEqual(
+        referenceVerify(clause, quote),
+      );
+    }
   });
 });

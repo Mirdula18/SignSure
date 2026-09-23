@@ -28,7 +28,6 @@ export const hi: Dictionary = {
   'app.skipToContent': 'सीधे मुख्य कंटेंट पर जाएँ',
   'app.disclaimerShort': 'SignSure आपका डॉक्यूमेंट समझाता है। यह कानूनी सलाह नहीं है।',
   'app.disclaimerLink': 'पूरा डिस्क्लेमर पढ़ें',
-  'app.howItWorks': 'SignSure कैसे काम करता है',
   'app.privacy': 'प्राइवेसी',
   'app.privacyNote':
     'आपकी फ़ाइल आपके ब्राउज़र से बाहर नहीं जाती। उसके क्लॉज़ का टेक्स्ट और आपके पूछे सवाल, समझाने के लिए SignSure के सर्वर के ज़रिए Google के Gemini API को भेजे जाते हैं; SignSure इन्हें न सेव करता है, न लॉग करता है, और इन पर Google के Gemini API की शर्तें लागू होती हैं। सुरक्षा जाँच के लिए Cloudflare Turnstile का इस्तेमाल होता है। इस ब्राउज़र में सिर्फ़ आपकी भाषा और पढ़ने के स्तर की पसंद सेव होती है, और "सब कुछ हटाएँ" इस पेज से डॉक्यूमेंट हटा देता है।',
@@ -60,7 +59,6 @@ export const hi: Dictionary = {
   'home.trust3Body':
     'फ़ाइल आपके ब्राउज़र के अंदर ही पढ़ी जाती है। समझाने के लिए सिर्फ़ उसके क्लॉज़ का टेक्स्ट हमारे सर्वर के ज़रिए Google के Gemini API को भेजा जाता है। कुछ भी सेव नहीं होता।',
   'home.cta': 'मेरा ऑफर लेटर जाँचें',
-  'home.sampleCta': 'सैंपल से आज़माकर देखें',
 
   /* ----------------------------------- upload ----------------------------------- */
   'upload.heading': 'अपना डॉक्यूमेंट जोड़ें',
@@ -78,9 +76,6 @@ export const hi: Dictionary = {
   'upload.reading': 'आपका डॉक्यूमेंट पढ़ा जा रहा है…',
   'upload.parsedPages': 'हमें {pages} पेजों में {clauses} क्लॉज़ मिले।',
   'upload.parsedNoPages': 'हमें {clauses} क्लॉज़ मिले।',
-  'upload.parsedPreview': 'शुरुआत के कुछ क्लॉज़',
-  'upload.continue': 'चुनें कि किस बात पर ध्यान देना है',
-  'upload.useDifferent': 'कोई दूसरा डॉक्यूमेंट इस्तेमाल करें',
   'upload.truncated':
     'यह डॉक्यूमेंट {pages} पेज से लंबा है। SignSure ने सिर्फ़ पहले {pages} पेज ही पढ़े हैं।',
 
@@ -120,7 +115,6 @@ export const hi: Dictionary = {
 
   /* ------------------------------------ report ---------------------------------- */
   'report.heading': 'आपकी रिपोर्ट',
-  'report.forDocument': '{name} के लिए',
   'report.tab.overview': 'सारांश',
   'report.tab.clauses': 'क्लॉज़',
   'report.tab.ask': 'सवाल पूछें',
@@ -130,9 +124,6 @@ export const hi: Dictionary = {
 
   'report.loading': 'आपके क्लॉज़ पढ़े जा रहे हैं और हर कोट जाँचा जा रहा है…',
   'report.ready': 'आपकी रिपोर्ट तैयार है।',
-  'report.loadingStage1': 'आपके क्लॉज़ पढ़े जा रहे हैं…',
-  'report.loadingStage2': 'हर कोट को आपके डॉक्यूमेंट से मिलाकर देखा जा रहा है…',
-  'report.loadingStage3': 'भारत की रूल लाइब्रेरी लगाई जा रही है…',
   'report.retry': 'दोबारा कोशिश करें',
 
   'report.verifiedCount':
@@ -174,6 +165,8 @@ export const hi: Dictionary = {
   'clauses.filterAll': 'सभी',
   'clauses.search': 'क्लॉज़ में खोजें',
   'clauses.searchHint': 'खोज आपके डॉक्यूमेंट के असली टेक्स्ट में होती है।',
+  'clauses.goTo': '{clause} पर जाएँ',
+  'clauses.noNotes': 'इस क्लॉज़ पर SignSure की कोई टिप्पणी नहीं है।',
   'clauses.none': 'इन फ़िल्टर से कोई क्लॉज़ मेल नहीं खाता।',
   'clauses.count': '{total} में से {shown} क्लॉज़ दिखाए जा रहे हैं।',
   'clauses.viewOriginal': 'असली टेक्स्ट देखें',
@@ -266,7 +259,6 @@ export const hi: Dictionary = {
   'compare.heading': 'दो वर्ज़न की तुलना करें',
   'compare.intro':
     'बदला हुआ ऑफर जोड़ दें, SignSure बता देगा कि क्या-क्या बदला है। आपका पहला डॉक्यूमेंट वैसे का वैसा रहेगा।',
-  'compare.addSecond': 'बदला हुआ डॉक्यूमेंट जोड़ें',
   'compare.run': 'दोनों वर्ज़न की तुलना करें',
   'compare.running': 'दोनों वर्ज़न की तुलना की जा रही है…',
   'compare.noChanges': 'इन दोनों वर्ज़न के बीच मतलब का कोई बदलाव नहीं मिला।',
@@ -310,7 +302,8 @@ export const hi: Dictionary = {
 
   /* -------------------------------------- errors --------------------------------- */
   'error.INVALID_INPUT': 'उस रिक्वेस्ट में कुछ ठीक नहीं था। कृपया दोबारा कोशिश करें।',
-  'error.UNAUTHORIZED': 'आपका सेशन खत्म हो गया है। आगे बढ़ने के लिए कृपया पेज दोबारा लोड करें।',
+  'error.UNAUTHORIZED':
+    'सुरक्षा जाँच को फिर से करना ज़रूरी था, और SignSure अभी उसे कर रहा है। कृपया थोड़ी देर में दोबारा कोशिश करें। आपका डॉक्यूमेंट अभी भी यहीं है।',
   'error.TOO_LARGE': 'वह डॉक्यूमेंट जाँच के लिए बहुत बड़ा है। कोई छोटा डॉक्यूमेंट आज़माकर देखें।',
   'error.RATE_LIMITED':
     'आपने बहुत सारी रिक्वेस्ट भेज दी हैं। कृपया एक मिनट रुककर दोबारा कोशिश करें।',
@@ -326,7 +319,6 @@ export const hi: Dictionary = {
   /* ------------------------------------ a11y tools ------------------------------- */
   'readAloud.play': 'पढ़कर सुनाएँ',
   'readAloud.stop': 'पढ़ना रोकें',
-  'readAloud.unsupported': 'आपका ब्राउज़र टेक्स्ट पढ़कर नहीं सुना सकता।',
   'glossary.open': '{term} का क्या मतलब है?',
   'glossary.close': 'बंद करें',
   'glossary.liquidatedDamages.definition':
@@ -351,9 +343,7 @@ export const hi: Dictionary = {
     'इस कॉन्ट्रैक्ट से जुड़ा कोई विवाद किस शहर की किन अदालतों में सुना जाएगा।',
 
   /* -------------------------------------- turnstile ------------------------------ */
-  'turnstile.label': 'सुरक्षा जाँच',
   'turnstile.hint':
     'यह झटपट होने वाली अपने आप की जाँच है कि आप इंसान हैं। आमतौर पर कुछ करना नहीं पड़ता।',
   'turnstile.failed': 'सुरक्षा जाँच पूरी नहीं हो पाई। कृपया पेज दोबारा लोड करें।',
-  'turnstile.waiting': 'झटपट सुरक्षा जाँच चल रही है…',
 };

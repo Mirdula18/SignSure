@@ -18,7 +18,7 @@
 ### 2. Upload
 - Dropzone (also a real `<input type="file">` button), paste-text tab.
 - No security check yet: a visitor who only reads the home page never contacts Cloudflare.
-- After parse: "We found 32 clauses across 5 pages." + preview of first clauses.
+- After parse: "We found 32 clauses across 5 pages." The clauses themselves are shown in the report, so they are not previewed twice.
 - Language + reading level selectors here and in header.
 
 ### 3. Concerns (lenses)

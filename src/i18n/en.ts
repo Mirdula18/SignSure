@@ -15,7 +15,6 @@ export const en = {
   'app.skipToContent': 'Skip to main content',
   'app.disclaimerShort': 'SignSure explains your document. It is not legal advice.',
   'app.disclaimerLink': 'Read the full disclaimer',
-  'app.howItWorks': 'How SignSure works',
   'app.privacy': 'Privacy',
   'app.privacyNote':
     "Your file never leaves your browser. The text of its clauses, and any question you ask, is sent through SignSure's server to Google's Gemini API to be explained; SignSure does not store or log it, and Google's Gemini API terms apply to it. The security check uses Cloudflare Turnstile. Only your language and reading-level choices are saved in this browser, and Clear everything removes the document from this page.",
@@ -48,7 +47,6 @@ export const en = {
   'home.trust3Body':
     "The file is read inside your browser. Only its clause text is sent, through our server, to Google's Gemini API to be explained. Nothing is stored.",
   'home.cta': 'Check my offer letter',
-  'home.sampleCta': 'Try with a sample',
 
   /* ----------------------------------- upload ----------------------------------- */
   'upload.heading': 'Add your document',
@@ -66,9 +64,6 @@ export const en = {
   'upload.reading': 'Reading your document…',
   'upload.parsedPages': 'We found {clauses} clauses across {pages} pages.',
   'upload.parsedNoPages': 'We found {clauses} clauses.',
-  'upload.parsedPreview': 'First few clauses',
-  'upload.continue': 'Choose what to focus on',
-  'upload.useDifferent': 'Use a different document',
   'upload.truncated':
     'This document is longer than {pages} pages. SignSure read the first {pages} pages only.',
 
@@ -109,7 +104,6 @@ export const en = {
 
   /* ------------------------------------ report ---------------------------------- */
   'report.heading': 'Your report',
-  'report.forDocument': 'For {name}',
   'report.tab.overview': 'Overview',
   'report.tab.clauses': 'Clauses',
   'report.tab.ask': 'Ask',
@@ -119,9 +113,6 @@ export const en = {
 
   'report.loading': 'Reading your clauses and checking every quote…',
   'report.ready': 'Your report is ready.',
-  'report.loadingStage1': 'Reading your clauses…',
-  'report.loadingStage2': 'Checking each quote against your document…',
-  'report.loadingStage3': 'Applying the India rule library…',
   'report.retry': 'Try again',
 
   'report.verifiedCount':
@@ -164,6 +155,8 @@ export const en = {
   'clauses.search': 'Search the clauses',
   'clauses.searchHint': 'Searches the original text of your document.',
   'clauses.none': 'No clauses match these filters.',
+  'clauses.goTo': 'Go to {clause}',
+  'clauses.noNotes': 'SignSure has no notes on this clause.',
   'clauses.count': 'Showing {shown} of {total} clauses.',
   'clauses.viewOriginal': 'View the original text',
   'clauses.hideOriginal': 'Hide the original text',
@@ -255,7 +248,6 @@ export const en = {
   'compare.heading': 'Compare two versions',
   'compare.intro':
     'Add the revised offer and SignSure will show what changed. Your first document stays as it is.',
-  'compare.addSecond': 'Add the revised document',
   'compare.run': 'Compare the two versions',
   'compare.running': 'Comparing the two versions…',
   'compare.noChanges': 'Nothing meaningful changed between these two versions.',
@@ -299,7 +291,8 @@ export const en = {
 
   /* -------------------------------------- errors --------------------------------- */
   'error.INVALID_INPUT': 'Something about that request was not right. Please try again.',
-  'error.UNAUTHORIZED': 'Your session has expired. Please reload the page to continue.',
+  'error.UNAUTHORIZED':
+    'The security check needed renewing, and SignSure is renewing it now. Please try again in a moment. Your document is still here.',
   'error.TOO_LARGE': 'That document is too large to analyse. Try a shorter one.',
   'error.RATE_LIMITED': 'You have made a lot of requests. Please wait a minute and try again.',
   'error.MODEL_BLOCKED':
@@ -313,7 +306,6 @@ export const en = {
   /* ------------------------------------ a11y tools ------------------------------- */
   'readAloud.play': 'Read aloud',
   'readAloud.stop': 'Stop reading',
-  'readAloud.unsupported': 'Your browser cannot read text aloud.',
   'glossary.open': 'What does {term} mean?',
   'glossary.close': 'Close',
   'glossary.liquidatedDamages.definition':
@@ -338,10 +330,8 @@ export const en = {
     'Which courts, in which city, would hear a dispute about this contract.',
 
   /* -------------------------------------- turnstile ------------------------------ */
-  'turnstile.label': 'Security check',
   'turnstile.hint': 'A quick automatic check that you are a person. Usually nothing to do.',
   'turnstile.failed': 'The security check did not pass. Please reload the page.',
-  'turnstile.waiting': 'Running a quick security check…',
 } as const;
 
 export type TranslationKey = keyof typeof en;

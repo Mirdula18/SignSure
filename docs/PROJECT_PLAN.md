@@ -173,3 +173,22 @@ Blocked: as Day 2 — deployment, live eval, demo video and posts are in `HUMAN_
 Decisions: D35–D41.
 Gate: lint ✅ · typecheck ✅ · 1,569 unit tests, 99.88% lines ✅ · build ✅ · 76 E2E ✅.
 Next: blog draft, judge review, final report.
+
+### Day 4 – 2026-09-23
+Done: acted on an independent review of all six judging criteria (it scored 7/8/8/7/8/7).
+Honesty: a rule that flagged clauses *protecting* the reader's documents; unverified findings
+reaching the preparation sheet and its export; an unsupported "see a lawyer" answer shown as
+prose; a summary with no stated source (D43). Privacy wording corrected and a privacy note
+added (D45). Accessibility: page language, focus on every screen change, a report heading that
+survives completion, an announcement when the report is ready, and an invisible tab stop
+removed (D44). The Clauses tab now lists every clause, each with exactly one citation target
+(D46), and rule cards name their clause and open it (D47). A refused session renews itself
+instead of asking for a reload (D48). Security: a chunked body is capped while it is read, and
+a missing or short IP salt is refused and reported (D49). Compare pairing went from about 23 s
+to about 120 ms for 150 clauses a side (D42). Thirteen unused strings removed (D50).
+Blocked: a second independent review could not finish (model rate limit), so the fixes were
+verified directly instead. Deployment, live eval, video and posts remain in `HUMAN_TASKS.md`.
+Decisions: D42–D50.
+Gate: lint ✅ · typecheck ✅ · 1,607 unit tests, 99.77% lines ✅ · build ✅ · 117.6 kB initial
+JS ✅ · 76 E2E ✅ · secret scan ✅.
+Next: the human tasks — deploy, live eval, Hindi review, video, posts.

@@ -59,7 +59,7 @@ flowchart LR
 
 ## Features
 
-- **Clause map:** the document split into numbered clauses under their section titles, each explained with a risk level and a verification badge.
+- **Clause map:** every clause of the document, in order, under its section heading. Clauses SignSure has something to say about carry an explanation, a risk level and a verification badge; the rest show their own text, so the whole document can be read in one place.
 - **Concern lenses:** "I might quit early", "My next job", "My salary" and "Being let go" re-rank the report around what the reader cares about.
 - **India rule library:** 16 deterministic rules (post-employment non-competes, bonds and liquidated damages, asymmetric or long notice, document retention, clawbacks, unilateral changes, the 50% wages rule and more) plus 6 checks for information a letter should state but doesn't.
 - **Grounded Q&A:** answers cite verified clauses, or say plainly that the document does not cover the question.
@@ -71,21 +71,21 @@ flowchart LR
 
 | | |
 |---|---|
-| Unit and component tests | **1,553** across 57 files (Vitest, React Testing Library, vitest-axe) |
+| Unit and component tests | **1,607** across 59 files (Vitest, React Testing Library, vitest-axe) |
 | End-to-end tests | **76**: 38 journeys, accessibility and security checks, each on desktop Chromium and a Pixel 7 viewport (Playwright + axe) |
-| Coverage | **99.87%** lines · 99.15% statements · 96.21% branches · 99.77% functions; **100%** on quote verification, normalisation and the rule library (enforced in CI) |
+| Coverage | **99.77%** lines · 99.09% statements · 96.29% branches · 99.78% functions; **100%** on quote verification, normalisation and the rule library (enforced in CI) |
 | Golden set | 6 synthetic contracts with expectations, including a prompt-injection contract; 85 offline checks on every test run |
-| Initial JavaScript | **117.0 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
-| Lighthouse (production build, local) | Accessibility **100** · Best practices **100** · SEO **100** · Performance 98 desktop, 74–92 mobile (simulated slow 4G, 4× CPU) |
+| Initial JavaScript | **117.6 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
+| Lighthouse (production build, local, 2026-09-22) | Accessibility **100** · Best practices **100** · SEO **100** · Performance 98 desktop, 74–92 mobile (simulated slow 4G, 4× CPU) |
 | Security checks | Secret scan, `npm audit` (0 vulnerabilities), CSP pinned by test, 401 / 413 / 429 paths tested end to end |
-| Repository | 1.9 MB of tracked files |
+| Repository | 2.0 MB across 210 tracked files |
 
 ## How this project maps to the judging criteria
 
 | Criterion | Evidence |
 |---|---|
 | **Problem statement alignment** | Built for one audience and one decision: signing an Indian offer letter. Rule texts cite primary sources with review dates ([`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md)); cautious wording is enforced by tests; the disclaimer is on every screen. |
-| **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; 40 recorded design decisions in [`docs/DECISIONS.md`](docs/DECISIONS.md). |
+| **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; 50 recorded design decisions in [`docs/DECISIONS.md`](docs/DECISIONS.md). |
 | **Security** | Key only in Functions `env`; Turnstile → HMAC session bound to a hashed IP; KV rate limits; 256 KB body cap; origin check; CSP with no inline or eval script; prompt fences sanitised; no server logging of document text. Checklist with evidence in [`docs/SECURITY.md`](docs/SECURITY.md) §4. |
 | **Efficiency** | Parsing happens on the device; only clause text is sent. Parsers, the report and the Turnstile script load only when needed; initial JS budget enforced in CI. |
 | **Testing** | Unit, component, API-handler, golden-set, E2E and axe layers, run in CI on every push ([`docs/TESTING.md`](docs/TESTING.md)); `npm run eval` scores the live model against the golden set. |

@@ -1,4 +1,4 @@
-import type { MinimalKv } from '../../tools/memoryKv';
+import type { MinimalKv } from './kv';
 
 /**
  * Fixed-window rate limiting backed by Workers KV.

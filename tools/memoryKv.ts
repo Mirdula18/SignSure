@@ -5,15 +5,9 @@
  * a KV that behaves like the real one (string values, `expirationTtl`) without the real runtime.
  * Only the surface `functions/lib/ratelimit.ts` actually uses is implemented.
  */
-export interface KvPutOptions {
-  expirationTtl?: number;
-}
+import type { KvPutOptions, MinimalKv } from '../functions/lib/kv';
 
-export interface MinimalKv {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, options?: KvPutOptions): Promise<void>;
-  delete(key: string): Promise<void>;
-}
+export type { KvPutOptions, MinimalKv } from '../functions/lib/kv';
 
 interface Entry {
   value: string;

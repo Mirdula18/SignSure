@@ -139,9 +139,12 @@ export const prepareRequestSchema = z.object({
   unansweredQuestions: z.array(z.string().max(LIMITS.maxQuestionChars)).max(20),
 });
 
-export const sessionRequestSchema = z.object({
-  turnstileToken: z.string().min(1).max(2_048),
-});
+/**
+ * A session is asked for, not proved, so the body carries nothing. It is still parsed rather
+ * than ignored: the route then answers a malformed request the same way every other route does,
+ * and unknown keys are dropped instead of reaching anything behind it.
+ */
+export const sessionRequestSchema = z.object({});
 
 /* ------------------------------------------------------------------ *
  * Model output. Deliberately permissive about length and strict about

@@ -2,8 +2,9 @@
  * Short-lived session tokens.
  *
  * What this protects: the Gemini proxy. Without a token, anyone could point a script at
- * `/api/analyze` and spend the project's quota. A token is only issued after a Turnstile
- * challenge, so scripted abuse has to solve a challenge per session rather than per request.
+ * `/api/analyze` and spend the project's quota. Asking for a token is free, but it is issued
+ * against a hashed address and expires, so abuse stays inside one address's rate-limit budget
+ * instead of being spread across as many parallel requests as a script can open.
  *
  * What it deliberately is not: authentication. SignSure has no accounts and stores nothing
  * about anyone. The token carries a hashed IP and an expiry, nothing else - no user id, no

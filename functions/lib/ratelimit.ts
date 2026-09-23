@@ -46,7 +46,7 @@ export interface RateLimitResult {
  *
  * Fails **open**: if KV is missing or unreachable the request proceeds. A rate limiter that
  * takes the whole product down when its store hiccups is worse than one that occasionally lets
- * a request through, and every other control (Turnstile, session token, payload caps) still
+ * a request through, and every other control (session token, payload caps) still
  * applies. `/api/health` reports whether the store is bound so a misconfiguration is visible.
  */
 export async function checkRateLimit(

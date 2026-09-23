@@ -498,21 +498,25 @@ describe('prepareRequestSchema', () => {
 });
 
 describe('sessionRequestSchema', () => {
-  it('accepts a Turnstile token', () => {
-    const result = sessionRequestSchema.safeParse({ turnstileToken: '0.abcdef' });
-    expect(result.success).toBe(true);
-    expect(result.data!.turnstileToken).toBe('0.abcdef');
+  it('accepts an empty body, because a session is asked for rather than proved', () => {
+    expect(sessionRequestSchema.safeParse({}).success).toBe(true);
   });
 
-  const invalidTokens: [description: string, token: unknown][] = [
-    ['an empty string, which means the widget never ran', ''],
-    ['a token longer than any real Turnstile token', 'x'.repeat(2_049)],
-    ['a number instead of a token', 42],
-    ['a missing token', undefined],
+  it('drops anything else the caller sends instead of passing it on', () => {
+    const result = sessionRequestSchema.safeParse({ pretendAdmin: true, note: 'anything' });
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({});
+  });
+
+  const invalidBodies: [description: string, body: unknown][] = [
+    ['an array', []],
+    ['a string', 'session please'],
+    ['a number', 42],
+    ['null', null],
   ];
 
-  it.each(invalidTokens)('rejects %s', (_description, turnstileToken) => {
-    expect(sessionRequestSchema.safeParse({ turnstileToken }).success).toBe(false);
+  it.each(invalidBodies)('rejects %s', (_description, body) => {
+    expect(sessionRequestSchema.safeParse(body).success).toBe(false);
   });
 });
 

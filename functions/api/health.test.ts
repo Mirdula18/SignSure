@@ -33,7 +33,6 @@ describe('GET /api/health', () => {
     expect(body.mode).toBe('live');
     expect(body.configured).toEqual({
       gemini: false,
-      turnstile: false,
       session: false,
       ipSalt: false,
       rateLimitStore: false,

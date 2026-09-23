@@ -3,16 +3,14 @@ import { ipHashSalt, sessionSecret, type Env } from '../lib/env';
 import { bearerToken, clientIp, errorResponse, json, parseBody } from '../lib/http';
 import { checkRateLimit, rateLimitHeaders } from '../lib/ratelimit';
 import { hashIp, issueSession, verifySession } from '../lib/session';
-import { verifyTurnstile } from '../lib/turnstile';
 
 /**
  * Issues the short-lived token every other `/api/*` route requires.
  *
- * Flow: the browser solves a Turnstile challenge, posts the token here, and gets back an
- * HMAC-signed session bound to a hashed IP and a thirty-minute expiry. That is what makes
- * scripted abuse of the Gemini proxy cost a challenge per session instead of nothing at all.
- *
- * Rate limited in its own right, so the challenge cannot simply be solved in a loop.
+ * The browser asks for one and gets back an HMAC-signed session bound to a hashed IP and a
+ * thirty-minute expiry. Nothing is proved to get it, so this endpoint is open by design: what
+ * limits abuse of the Gemini proxy is the per-address rate limit here and on every route behind
+ * it, plus the payload caps. A session is a budget, not a credential.
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const ip = clientIp(request);
@@ -33,19 +31,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     // Refuse to issue a token a short secret could let someone forge. `/api/health` reports
     // this so a deployer can see it without the endpoint explaining the problem to a caller.
     return errorResponse('INTERNAL');
-  }
-
-  const turnstile = await verifyTurnstile(body.data.turnstileToken, env.TURNSTILE_SECRET_KEY, ip);
-  if (!turnstile.ok) {
-    // Each failure gets the message that is true for it: a missing server key is our fault, not
-    // an expired session, and telling the visitor to reload would send them round in circles.
-    const code =
-      turnstile.reason === 'UNREACHABLE'
-        ? 'UPSTREAM_TIMEOUT'
-        : turnstile.reason === 'NOT_CONFIGURED'
-          ? 'INTERNAL'
-          : 'UNAUTHORIZED';
-    return errorResponse(code, rateLimitHeaders(rate));
   }
 
   const session = await issueSession(secret, ipHash);

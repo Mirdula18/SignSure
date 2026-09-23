@@ -12,12 +12,6 @@ const OTHER_IP = '198.51.100.22';
 const SESSION_URL = 'https://signsure.pages.dev/api/session';
 const ANALYZE_URL = 'https://signsure.pages.dev/api/analyze';
 
-/** Cloudflare's documented always-pass test secret, which skips the network entirely. */
-const ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
-
-/** Any other secret, so verification really goes to (our stand-in for) siteverify. */
-const REAL_TURNSTILE_SECRET = 'unit-test-turnstile-secret';
-
 /** A fixed instant, so expiry and rate-limit windows read as plain arithmetic. */
 const NOW = Date.UTC(2026, 0, 15, 9, 30, 0);
 
@@ -36,25 +30,17 @@ function testEnv(overrides: TestEnv = {}): TestEnv {
   return {
     SESSION_SECRET: SECRET,
     IP_HASH_SALT: SALT,
-    TURNSTILE_SECRET_KEY: ALWAYS_PASS_TEST_SECRET,
     RATE_LIMIT_KV: new MemoryKv(),
     ...overrides,
   };
 }
 
-function sessionRequest(body: unknown = { turnstileToken: 'solved-challenge' }, ip = IP): Request {
+function sessionRequest(body: unknown = {}, ip = IP): Request {
   return new Request(SESSION_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'CF-Connecting-IP': ip },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
-}
-
-/** Replaces the global fetch for one test, so siteverify is never really called. */
-function stubFetch(respond: typeof fetch) {
-  const fetchMock = vi.fn<typeof fetch>(respond);
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
 }
 
 async function errorBody(response: Response) {
@@ -140,10 +126,7 @@ describe('POST /api/session', () => {
     ['blank', ''],
     ['31 characters, one short of the minimum', 'x'.repeat(31)],
   ])('refuses with 500 INTERNAL and no token when SESSION_SECRET is %s', async (_label, secret) => {
-    const fetchMock = stubFetch(() =>
-      Promise.resolve(new Response(JSON.stringify({ success: true }))),
-    );
-    const env = testEnv({ TURNSTILE_SECRET_KEY: REAL_TURNSTILE_SECRET });
+    const env = testEnv();
     if (secret === undefined) delete env.SESSION_SECRET;
     else env.SESSION_SECRET = secret;
 
@@ -153,8 +136,6 @@ describe('POST /api/session', () => {
     const text = await response.text();
     expect(text).not.toContain('token');
     expect(apiErrorSchema.parse(JSON.parse(text)).error.code).toBe('INTERNAL');
-    // Refused before spending a Turnstile verification on a token it could never issue.
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('accepts a secret of exactly 32 characters', async () => {
@@ -175,76 +156,30 @@ describe('POST /api/session', () => {
     expect(await refused.text()).not.toContain('short-secret');
   });
 
-  it('returns 401 when Turnstile rejects the challenge token', async () => {
-    const fetchMock = stubFetch(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] })),
-      ),
-    );
+  it('ignores anything the caller puts in the body, rather than passing it on', async () => {
+    // Nothing is proved to get a session, so the body carries no meaning. Unknown keys are
+    // dropped by the schema instead of reaching the code behind it.
     const response = await call({
-      request: sessionRequest(),
-      env: testEnv({ TURNSTILE_SECRET_KEY: REAL_TURNSTILE_SECRET }),
+      request: sessionRequest({ pretendAdmin: true }),
+      env: testEnv(),
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(response.status).toBe(401);
-    const error = await errorBody(response);
-    expect(error.code).toBe('UNAUTHORIZED');
-    expect(JSON.stringify(error)).not.toContain('invalid-input-response');
-    expect(response.headers.get('RateLimit-Limit')).toBe('10');
-  });
-
-  it('returns 504 UPSTREAM_TIMEOUT when siteverify cannot be reached, and issues nothing', async () => {
-    stubFetch(() => Promise.reject(new TypeError('fetch failed')));
-    const response = await call({
-      request: sessionRequest(),
-      env: testEnv({ TURNSTILE_SECRET_KEY: REAL_TURNSTILE_SECRET }),
-    });
-
-    expect(response.status).toBe(504);
-    const error = await errorBody(response);
-    expect(error.code).toBe('UPSTREAM_TIMEOUT');
-    expect(error.retryable).toBe(true);
-  });
-
-  it('fails closed with a server error when no Turnstile secret is configured at all', async () => {
-    // Still no token. But it is our misconfiguration, not the visitor's expired session, so it
-    // is a 500: a 401 would tell them to reload, and reloading would never fix it.
-    const env = testEnv();
-    delete env.TURNSTILE_SECRET_KEY;
-    const response = await call({ request: sessionRequest(), env });
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toMatchObject({ error: { code: 'INTERNAL' } });
-  });
-
-  it('forwards the client IP to siteverify so Cloudflare can score the solve', async () => {
-    const fetchMock = stubFetch(() =>
-      Promise.resolve(new Response(JSON.stringify({ success: true }))),
-    );
-    await call({
-      request: sessionRequest(),
-      env: testEnv({ TURNSTILE_SECRET_KEY: REAL_TURNSTILE_SECRET }),
-    });
-
-    const body = fetchMock.mock.calls[0]?.[1]?.body;
-    expect(body).toBeInstanceOf(FormData);
-    expect((body as FormData).get('remoteip')).toBe(IP);
-    expect((body as FormData).get('response')).toBe('solved-challenge');
+    expect(response.status).toBe(200);
+    const { token } = sessionResponseSchema.parse(await response.json());
+    expect((await verifySession(token, SECRET, await hashIp(IP, SALT))).ok).toBe(true);
   });
 
   it.each([
-    ['a body that is not JSON', '{"turnstileToken":'],
-    ['no Turnstile token', {}],
-    ['an empty Turnstile token', { turnstileToken: '' }],
-    ['an oversized Turnstile token', { turnstileToken: 'x'.repeat(2_049) }],
+    ['a body that is not JSON', '{"broken":'],
+    ['a body that is not an object', '[]'],
+    ['a body that is a bare string', '"session please"'],
   ])('returns 400 for %s', async (_label, body) => {
     const response = await call({ request: sessionRequest(body), env: testEnv() });
     expect(response.status).toBe(400);
     expect((await errorBody(response)).code).toBe('INVALID_INPUT');
   });
 
-  it('returns 429 with Retry-After on the eleventh attempt in ten minutes, before checking Turnstile', async () => {
+  it('returns 429 with Retry-After on the eleventh attempt in ten minutes', async () => {
     vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
     const env = testEnv();
 
@@ -252,25 +187,20 @@ describe('POST /api/session', () => {
       expect((await call({ request: sessionRequest(), env })).status).toBe(200);
     }
 
-    const fetchMock = stubFetch(() =>
-      Promise.resolve(new Response(JSON.stringify({ success: true }))),
-    );
-    env.TURNSTILE_SECRET_KEY = REAL_TURNSTILE_SECRET;
     const limited = await call({ request: sessionRequest(), env });
 
     expect(limited.status).toBe(429);
     expect((await errorBody(limited)).code).toBe('RATE_LIMITED');
     expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
     expect(Number(limited.headers.get('Retry-After'))).toBeLessThanOrEqual(10 * 60);
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('counts failed attempts too, so the challenge cannot simply be retried in a loop', async () => {
+  it('counts refused attempts too, so a loop of bad requests still spends the budget', async () => {
     vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
     const env = testEnv();
 
     for (let index = 0; index < 10; index += 1) {
-      expect((await call({ request: sessionRequest({}), env })).status).toBe(400);
+      expect((await call({ request: sessionRequest('{"broken":'), env })).status).toBe(400);
     }
     expect((await call({ request: sessionRequest(), env })).status).toBe(429);
   });

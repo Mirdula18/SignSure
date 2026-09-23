@@ -7,8 +7,6 @@
 export interface Env {
   /** Secret. Absent when MOCK_GEMINI is on. */
   GEMINI_API_KEY?: string;
-  /** Secret. Cloudflare Turnstile server-side key. */
-  TURNSTILE_SECRET_KEY?: string;
   /** Secret. HMAC key for session tokens; must be >= 32 bytes in production. */
   SESSION_SECRET?: string;
   /** Secret. Salt so stored rate-limit keys cannot be reversed to an IP. */

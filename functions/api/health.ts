@@ -11,7 +11,6 @@ export const onRequestGet: PagesFunction<Env> = ({ env }) => {
       mode: isMockMode(env) ? 'mock' : 'live',
       configured: {
         gemini: isMockMode(env) || Boolean(env.GEMINI_API_KEY),
-        turnstile: Boolean(env.TURNSTILE_SECRET_KEY),
         // Reported as configured only when it is long enough to be used, so a deployer who set
         // a short secret sees the problem here rather than as a stream of 500s.
         session: sessionSecret(env) !== null,

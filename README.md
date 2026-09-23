@@ -71,11 +71,11 @@ flowchart LR
 
 | | |
 |---|---|
-| Unit and component tests | **1,583** across 57 files (Vitest, React Testing Library, vitest-axe) |
+| Unit and component tests | **1,609** across 58 files (Vitest, React Testing Library, vitest-axe) |
 | End-to-end tests | **76**: 38 journeys, accessibility and security checks, each on desktop Chromium and a Pixel 7 viewport (Playwright + axe) |
-| Coverage | **99.76%** lines · 99.11% statements · 96.21% branches · 99.78% functions; **100%** on quote verification, normalisation and the rule library (enforced in CI) |
+| Coverage | **99.76%** lines · 99.13% statements · 96.27% branches · 99.78% functions; **100%** on quote verification, normalisation and the rule library (enforced in CI) |
 | Golden set | 6 synthetic contracts with expectations, including a prompt-injection contract; 85 offline checks on every test run |
-| Initial JavaScript | **117.1 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
+| Initial JavaScript | **117.2 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
 | Lighthouse (production build, local, 2026-09-22) | Accessibility **100** · Best practices **100** · SEO **100** · Performance 98 desktop, 74–92 mobile (simulated slow 4G, 4× CPU) |
 | Security checks | Secret scan, `npm audit` (0 vulnerabilities), CSP pinned by test, 401 / 413 / 429 paths tested end to end |
 | Repository | 1.7 MB across 196 tracked files |
@@ -87,7 +87,7 @@ flowchart LR
 | **Problem statement alignment** | Built for one audience and one decision: signing an Indian offer letter. Rule texts cite primary sources with review dates ([`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md)); cautious wording is enforced by tests; the disclaimer is on every screen. |
 | **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; every non-obvious choice explained in a short comment beside the code it governs. |
 | **Security** | Key only in Functions `env`; HMAC session token bound to a hashed IP; KV rate limits; 256 KB body cap; origin check; CSP with no inline or eval script; prompt fences sanitised; no server logging of document text. Checklist with evidence in [`docs/SECURITY.md`](docs/SECURITY.md) §4. |
-| **Efficiency** | Parsing happens on the device; only clause text is sent. Parsers and the report load only when needed; initial JS budget enforced in CI. |
+| **Efficiency** | Parsing happens on the device; only clause text is sent. Identical requests are answered from a cache instead of calling Gemini again: in the browser (switching language and back costs nothing) and on the server, where simultaneous identical requests share one call ([`functions/lib/responseCache.ts`](functions/lib/responseCache.ts)). Parsers and the report load only when needed; initial JS budget enforced in CI. |
 | **Testing** | Unit, component, API-handler, golden-set, E2E and axe layers, run in CI on every push ([`docs/TESTING.md`](docs/TESTING.md)); `npm run eval` scores the live model against the golden set. |
 | **Accessibility** | axe on every screen, keyboard-only journey, 320 px reflow and 200% zoom tested end to end; 44 px targets; Hindi interface; reading level; read-aloud ([`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md)). |
 

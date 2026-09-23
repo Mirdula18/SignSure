@@ -45,6 +45,49 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Answers the reader has already paid for, by exact request.
+ *
+ * Switching to Hindi and back, or changing the reading level and returning, would otherwise
+ * repeat a whole-document analysis: a Gemini call, a wait and a slice of the hourly limit, for
+ * an answer already on hand. Only validated successes are kept, only in memory, and the app
+ * empties it whenever the document changes or is cleared, so it never outlives the document.
+ */
+const MAX_CACHED_RESPONSES = 8;
+const responseCache = new Map<string, unknown>();
+
+/** Drops every cached answer. Called when the document is replaced or cleared. */
+export function clearCachedResponses(): void {
+  responseCache.clear();
+}
+
+/** Same request, same answer: POSTs through the cache. The session route never comes here. */
+async function cachedPost<S extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: S,
+  token: string,
+  options?: RequestOptions,
+): Promise<z.infer<S>> {
+  // The token is left out on purpose: a renewed session asks the same question.
+  const key = `${path}\n${JSON.stringify(body)}`;
+  if (responseCache.has(key)) {
+    const hit = responseCache.get(key);
+    // Re-inserting marks the entry as the most recently used.
+    responseCache.delete(key);
+    responseCache.set(key, hit);
+    return hit as z.infer<S>;
+  }
+
+  const data = await post(path, body, schema, token, options);
+  responseCache.set(key, data);
+  for (const oldest of responseCache.keys()) {
+    if (responseCache.size <= MAX_CACHED_RESPONSES) break;
+    responseCache.delete(oldest);
+  }
+  return data;
+}
+
 async function post<S extends z.ZodType>(
   path: string,
   body: unknown,
@@ -107,7 +150,7 @@ export async function analyzeDocument(
   input: { clauses: readonly Clause[]; lenses: readonly Lens[] } & Preferences,
   options?: RequestOptions,
 ): Promise<AnalysisResult> {
-  return post('/api/analyze', input, analyzeResponseSchema, token, options);
+  return cachedPost('/api/analyze', input, analyzeResponseSchema, token, options);
 }
 
 export async function askQuestion(
@@ -119,7 +162,7 @@ export async function askQuestion(
   } & Preferences,
   options?: RequestOptions,
 ): Promise<AskResult> {
-  return post('/api/ask', input, askResponseSchema, token, options);
+  return cachedPost('/api/ask', input, askResponseSchema, token, options);
 }
 
 export async function compareDocuments(
@@ -127,7 +170,7 @@ export async function compareDocuments(
   input: { clausesA: readonly Clause[]; clausesB: readonly Clause[] } & Preferences,
   options?: RequestOptions,
 ): Promise<CompareResult> {
-  return post('/api/compare', input, compareResponseSchema, token, options);
+  return cachedPost('/api/compare', input, compareResponseSchema, token, options);
 }
 
 export async function preparePack(
@@ -140,5 +183,5 @@ export async function preparePack(
   } & Preferences,
   options?: RequestOptions,
 ): Promise<PrepareResult> {
-  return post('/api/prepare', input, prepareResponseSchema, token, options);
+  return cachedPost('/api/prepare', input, prepareResponseSchema, token, options);
 }

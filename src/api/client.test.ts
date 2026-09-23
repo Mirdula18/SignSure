@@ -17,6 +17,7 @@ import {
   ApiError,
   analyzeDocument,
   askQuestion,
+  clearCachedResponses,
   compareDocuments,
   createSession,
   preparePack,
@@ -226,6 +227,7 @@ async function failure(promise: Promise<unknown>): Promise<ApiError> {
 }
 
 beforeEach(() => {
+  clearCachedResponses();
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -311,6 +313,94 @@ describe('successful responses', () => {
     fetchMock.mockResolvedValue(new Response('<html>Captive portal</html>', { status: 200 }));
     const error = await failure(analyzeDocument(TOKEN, ANALYZE_INPUT));
     expect(error.code).toBe('MODEL_INVALID_OUTPUT');
+  });
+});
+
+describe('the response cache', () => {
+  it('answers a repeated analysis from memory, without a second request', async () => {
+    fetchMock.mockResolvedValue(json(ANALYSIS));
+
+    const first = await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    const second = await analyzeDocument(TOKEN, { ...ANALYZE_INPUT });
+
+    expect(second).toEqual(first);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses an answer after the session is renewed, because the token is not part of the request', async () => {
+    fetchMock.mockResolvedValue(json(ANALYSIS));
+
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    await analyzeDocument('a-renewed-token', ANALYZE_INPUT);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again when anything in the request differs, such as the language', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(ANALYSIS)));
+
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    await analyzeDocument(TOKEN, { ...ANALYZE_INPUT, language: 'hi' });
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps routes apart, even for the same body', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json(ANALYSIS))
+      .mockResolvedValueOnce(errorEnvelope('INVALID_INPUT', false, 400));
+
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    const error = await failure(
+      preparePack(TOKEN, ANALYZE_INPUT as unknown as Parameters<typeof preparePack>[1]),
+    );
+
+    expect(error.code).toBe('INVALID_INPUT');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('never caches a failure, so trying again really tries again', async () => {
+    fetchMock
+      .mockResolvedValueOnce(errorEnvelope('UPSTREAM_TIMEOUT', true, 504))
+      .mockResolvedValueOnce(json(ANALYSIS));
+
+    await failure(analyzeDocument(TOKEN, ANALYZE_INPUT));
+    expect(await analyzeDocument(TOKEN, ANALYZE_INPUT)).toEqual(ANALYSIS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('never caches the session, which must be fresh every time', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(SESSION)));
+
+    await createSession();
+    await createSession();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('forgets everything once cleared', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(ANALYSIS)));
+
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    clearCachedResponses();
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('holds only the eight most recently used answers', async () => {
+    const question = (index: number) => ({ ...ASK_INPUT, question: `Question ${String(index)}?` });
+    fetchMock.mockImplementation(() => Promise.resolve(json(ASK)));
+
+    for (let index = 0; index < 9; index += 1) await askQuestion(TOKEN, question(index));
+    expect(fetchMock).toHaveBeenCalledTimes(9);
+
+    // Question 1 is still held; question 0 was the oldest and has been pushed out.
+    await askQuestion(TOKEN, question(1));
+    expect(fetchMock).toHaveBeenCalledTimes(9);
+    await askQuestion(TOKEN, question(0));
+    expect(fetchMock).toHaveBeenCalledTimes(10);
   });
 });
 

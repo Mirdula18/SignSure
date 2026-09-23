@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { modelId, type Env } from './env';
 import {
+  clearResponseCache,
   createGeminiClient,
   REQUEST_TIMEOUT_MS,
   stripCodeFence,
@@ -72,8 +73,28 @@ function reply(text: string | undefined): FakeResponse {
  * paths honest without making the suite wait for real.
  */
 async function settle<T>(pending: Promise<T>): Promise<T> {
-  await vi.runAllTimersAsync();
+  let settled = false;
+  const mark = () => {
+    settled = true;
+  };
+  pending.then(mark, mark);
+  // The retry timers only exist once the cache key has been hashed, so drain until done.
+  while (!settled) {
+    await vi.runAllTimersAsync();
+    await new Promise((resolve) => setImmediate(resolve));
+  }
   return pending;
+}
+
+/**
+ * Waits, on the real clock, until the first request reaches the SDK. Deadlines and backoff are
+ * measured from there, and the cache key is hashed before it, so advancing the fake clock any
+ * earlier would move time before the timers it is meant to test even exist.
+ */
+async function untilSent(): Promise<void> {
+  while (genai.generateContent.mock.calls.length === 0) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 
 function live(env: Env = LIVE) {
@@ -81,6 +102,7 @@ function live(env: Env = LIVE) {
 }
 
 beforeEach(() => {
+  clearResponseCache();
   genai.generateContent.mockReset();
   genai.constructedWith.length = 0;
 });
@@ -153,7 +175,9 @@ describe('createGeminiClient in mock mode', () => {
 
 describe('createGeminiClient in live mode', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    // Only the clock the client sleeps on. setImmediate stays real so settle() can yield to the
+    // cache-key hash, which Web Crypto computes outside the fake clock.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   });
 
   afterEach(() => {
@@ -218,7 +242,8 @@ describe('createGeminiClient in live mode', () => {
     });
 
     // The next call starts where the last one left off rather than paying for the refusal again.
-    await settle(client.generate(OPTIONS));
+    // A different question, so it reaches the model instead of the response cache.
+    await settle(client.generate({ ...OPTIONS, userPrompt: `${OPTIONS.userPrompt}\nProbation?` }));
     expect(genai.generateContent.mock.calls[2]![0].config?.thinkingConfig).toEqual({
       thinkingLevel: 'LOW',
     });
@@ -396,6 +421,7 @@ describe('createGeminiClient in live mode', () => {
       .mockResolvedValueOnce(reply(VALID));
     const pending = live().generate(OPTIONS);
 
+    await untilSent();
     await vi.advanceTimersByTimeAsync(399);
     expect(genai.generateContent).toHaveBeenCalledTimes(1);
 
@@ -439,6 +465,7 @@ describe('createGeminiClient in live mode', () => {
         settled = true;
       });
 
+    await untilSent();
     await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS - 1);
     expect(settled).toBe(false);
 
@@ -449,5 +476,62 @@ describe('createGeminiClient in live mode', () => {
 
   it('keeps the timeout at the 25 seconds documented in docs/AI_PIPELINE.md', () => {
     expect(REQUEST_TIMEOUT_MS).toBe(25_000);
+  });
+});
+
+describe('the live client response cache', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('answers an identical request without calling Gemini again, even from a new client', async () => {
+    genai.generateContent.mockResolvedValue(reply(VALID));
+
+    const first = await settle(live().generate(OPTIONS));
+    const second = await settle(live().generate(OPTIONS));
+
+    expect(second).toEqual(first);
+    expect(genai.generateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends identical requests that arrive together as one call', async () => {
+    genai.generateContent.mockResolvedValue(reply(VALID));
+
+    const results = await settle(Promise.all([live().generate(OPTIONS), live().generate(OPTIONS)]));
+
+    expect(results[0]).toEqual({ ok: true, data: { answer: 'Thirty days.' } });
+    expect(results[1]).toEqual(results[0]);
+    expect(genai.generateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('never caches a failure, so the next reader gets a fresh attempt', async () => {
+    genai.generateContent
+      .mockRejectedValueOnce(new Error('[403] API key not valid'))
+      .mockResolvedValueOnce(reply(VALID));
+
+    expect(await settle(live().generate(OPTIONS))).toEqual({ ok: false, code: 'INTERNAL' });
+    expect(await settle(live().generate(OPTIONS))).toEqual({
+      ok: true,
+      data: { answer: 'Thirty days.' },
+    });
+    expect(genai.generateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it.each<[string, Partial<GenerateOptions<typeof schema>>, Env]>([
+    ['a different document or question', { userPrompt: 'Another letter.' }, LIVE],
+    ['a different language or reading level', { systemInstruction: 'Answer in Hindi.' }, LIVE],
+    ['a different output budget', { maxOutputTokens: 512 }, LIVE],
+    ['a different model', {}, { ...LIVE, GEMINI_MODEL: 'gemini-other-flash' }],
+  ])('treats %s as a new request', async (_label, change, env) => {
+    genai.generateContent.mockResolvedValue(reply(VALID));
+
+    await settle(live().generate(OPTIONS));
+    await settle(live(env).generate({ ...OPTIONS, ...change }));
+
+    expect(genai.generateContent).toHaveBeenCalledTimes(2);
   });
 });

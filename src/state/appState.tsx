@@ -2,12 +2,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   type Dispatch,
   type ReactNode,
 } from 'react';
 import type { Lens } from '@shared/lenses';
+import { clearCachedResponses } from '@/api/client';
 import type {
   AnalysisResult,
   ApiErrorCode,
@@ -220,6 +222,9 @@ export function AppStateProvider({
   initial?: AppState;
 }) {
   const [state, dispatch] = useReducer(appReducer, initial);
+
+  // Cached answers belong to one document: drop them when it is replaced, cleared or unmounted.
+  useEffect(() => clearCachedResponses, [state.document]);
 
   const index = useMemo(
     () => new Map((state.document?.clauses ?? []).map((clause) => [clause.id, clause])),

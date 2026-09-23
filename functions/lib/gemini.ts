@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import type { z } from 'zod';
 import { isMockMode, modelId, thinkingLadder, type Env } from './env';
+import { cacheKey, ResponseCache } from './responseCache';
 import type { ApiErrorCode } from '../../shared/types';
 
 /**
@@ -115,6 +116,20 @@ function createMockClient(mockResponder: MockResponder | undefined): GeminiClien
   };
 }
 
+/**
+ * Shared by every request this isolate serves, which is the point: a per-request cache would
+ * never see a repeat. Sized for a handful of documents, because each entry is a whole analysis.
+ */
+const responseCache = new ResponseCache<GeminiResult<unknown>>({
+  maxEntries: 64,
+  ttlMs: 10 * 60 * 1000,
+});
+
+/** Empties the response cache, so tests never see an answer another test paid for. */
+export function clearResponseCache(): void {
+  responseCache.clear();
+}
+
 function createLiveClient(env: Env): GeminiClient {
   const apiKey = env.GEMINI_API_KEY;
   const model = modelId(env);
@@ -130,42 +145,62 @@ function createLiveClient(env: Env): GeminiClient {
       if (apiKey === undefined || apiKey.length === 0) {
         return { ok: false, code: 'INTERNAL' };
       }
-      const ai = new GoogleGenAI({ apiKey });
-
-      let lastFailure: GeminiFailure = 'INTERNAL';
-
-      for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
-        const outcome = await callOnce(ai, model, options, ladder[rung] ?? null);
-        if (outcome.kind === 'ok') return { ok: true, data: outcome.data as z.infer<S> };
-        if (outcome.kind === 'fatal') return { ok: false, code: outcome.code };
-        if (outcome.kind === 'thinking-unsupported') {
-          // Not a failure of the request: step down and try the same call again, without
-          // spending one of the retries meant for a flaky upstream.
-          rung += 1;
-          attempt -= 1;
-          continue;
-        }
-        lastFailure = outcome.code;
-        if (attempt < MAX_TRANSIENT_RETRIES) await sleep(backoffMs());
-      }
-
-      // The model produced something unparseable; ask once more for JSON only before failing.
-      if (lastFailure === 'MODEL_INVALID_OUTPUT') {
-        const repair = await callOnce(
-          ai,
-          model,
-          {
-            ...options,
-            userPrompt: `${options.userPrompt}\n\nReturn valid JSON only, matching the schema exactly. No markdown, no commentary.`,
-          },
-          ladder[rung] ?? null,
-        );
-        if (repair.kind === 'ok') return { ok: true, data: repair.data as z.infer<S> };
-      }
-
-      return { ok: false, code: lastFailure };
+      // The Zod schema is left out of the key: it is code, and the response schema beside it
+      // already describes the same shape.
+      const key = await cacheKey({
+        model,
+        systemInstruction: options.systemInstruction,
+        userPrompt: options.userPrompt,
+        responseSchema: options.responseSchema,
+        temperature: options.temperature,
+        maxOutputTokens: options.maxOutputTokens,
+      });
+      const result = await responseCache.getOrLoad(
+        key,
+        () => generateUncached(new GoogleGenAI({ apiKey }), options),
+        (outcome) => outcome.ok,
+      );
+      return result as GeminiResult<z.infer<S>>;
     },
   };
+
+  async function generateUncached<S extends z.ZodType>(
+    ai: GoogleGenAI,
+    options: GenerateOptions<S>,
+  ): Promise<GeminiResult<unknown>> {
+    let lastFailure: GeminiFailure = 'INTERNAL';
+
+    for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
+      const outcome = await callOnce(ai, model, options, ladder[rung] ?? null);
+      if (outcome.kind === 'ok') return { ok: true, data: outcome.data };
+      if (outcome.kind === 'fatal') return { ok: false, code: outcome.code };
+      if (outcome.kind === 'thinking-unsupported') {
+        // Not a failure of the request: step down and try the same call again, without
+        // spending one of the retries meant for a flaky upstream.
+        rung += 1;
+        attempt -= 1;
+        continue;
+      }
+      lastFailure = outcome.code;
+      if (attempt < MAX_TRANSIENT_RETRIES) await sleep(backoffMs());
+    }
+
+    // The model produced something unparseable; ask once more for JSON only before failing.
+    if (lastFailure === 'MODEL_INVALID_OUTPUT') {
+      const repair = await callOnce(
+        ai,
+        model,
+        {
+          ...options,
+          userPrompt: `${options.userPrompt}\n\nReturn valid JSON only, matching the schema exactly. No markdown, no commentary.`,
+        },
+        ladder[rung] ?? null,
+      );
+      if (repair.kind === 'ok') return { ok: true, data: repair.data };
+    }
+
+    return { ok: false, code: lastFailure };
+  }
 }
 
 function sleep(ms: number): Promise<void> {

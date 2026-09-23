@@ -10,6 +10,7 @@
 | Max output tokens | analyze 8k per batch, ask 1.5k, compare 4k, prepare 2k |
 | Safety settings | defaults; handle blocked responses → `MODEL_BLOCKED` |
 | Timeout | 25 s, and 45 s for analyze, which reads a whole document; 1 retry on 5xx, none on 429 |
+| Caching | Validated responses only, never failures. Server: in the isolate's memory, keyed by a SHA-256 of model, prompts, schema and budgets, 10 minutes, 64 entries, and identical requests in flight share one call (`functions/lib/responseCache.ts`). Browser: the last 8 answers by exact request, emptied when the document changes or is cleared (`src/api/client.ts`). |
 | Thinking | `thinkingLevel: MINIMAL` on every call, since all of them are structured extraction; `GEMINI_THINKING=auto` hands the choice back to the model |
 
 ```ts

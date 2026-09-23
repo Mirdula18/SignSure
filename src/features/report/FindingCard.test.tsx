@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
@@ -56,11 +56,11 @@ describe('FindingCard', () => {
     expect(screen.queryByText(/questions you could ask/i)).not.toBeInTheDocument();
   });
 
-  it('gives the card an id the citation buttons can jump to', () => {
+  it('leaves the citation target to the clause list, so two findings never share an id', () => {
     const { container } = renderWithPreferences(
       <FindingCard finding={finding()} clause={clause()} />,
     );
-    expect(container.querySelector('#clause-c001')).not.toBeNull();
+    expect(container.querySelector('[id^="clause-"]')).toBeNull();
   });
 
   it('has no axe violations when open', async () => {
@@ -122,7 +122,7 @@ describe('SideBySide', () => {
 
 describe('RuleCard', () => {
   it('shows the reviewed message, its legal basis and when it was last checked', () => {
-    renderWithPreferences(<RuleCard hit={ruleHit()} />);
+    renderWithPreferences(<RuleCard clause={clause()} hit={ruleHit()} />);
     expect(screen.getByRole('heading', { name: 'Long notice period' })).toBeInTheDocument();
     expect(screen.getByText(/Contract terms\./)).toBeInTheDocument();
     expect(screen.getByText(/Last reviewed 2026-09-20/)).toBeInTheDocument();
@@ -130,20 +130,22 @@ describe('RuleCard', () => {
   });
 
   it('shows the values the rule pulled out of the clause, under a readable label', () => {
-    renderWithPreferences(<RuleCard hit={ruleHit()} />);
+    renderWithPreferences(<RuleCard clause={clause()} hit={ruleHit()} />);
     expect(screen.getByText('ninety (90) days')).toBeInTheDocument();
     expect(screen.getByText('Period:')).toBeInTheDocument();
   });
 
   it('shows a detail it has no label for under its own name rather than a wrong one', () => {
-    renderWithPreferences(<RuleCard hit={ruleHit({ details: { months: '24' } })} />);
+    renderWithPreferences(
+      <RuleCard clause={clause()} hit={ruleHit({ details: { months: '24' } })} />,
+    );
     expect(screen.getByText('months:')).toBeInTheDocument();
   });
 
   it('shows the reviewed Hindi text to a Hindi reader, with the basis as cited', () => {
     sessionStorage.setItem('signsure.prefs', JSON.stringify({ language: 'hi' }));
     try {
-      renderWithPreferences(<RuleCard hit={ruleHit()} />);
+      renderWithPreferences(<RuleCard clause={clause()} hit={ruleHit()} />);
       expect(screen.getByRole('heading', { name: 'लंबी नोटिस अवधि' })).toBeInTheDocument();
       expect(screen.getByText('क्या प्रोबेशन के दौरान नोटिस अवधि छोटी है?')).toBeInTheDocument();
       expect(screen.getByText('अवधि:')).toBeInTheDocument();
@@ -156,13 +158,46 @@ describe('RuleCard', () => {
   it('omits the details and questions blocks when a rule has neither', () => {
     const hit = ruleHit({ questions: [] });
     delete hit.details;
-    renderWithPreferences(<RuleCard hit={hit} />);
+    renderWithPreferences(<RuleCard clause={clause()} hit={hit} />);
     expect(screen.queryByText(/questions to ask/i)).not.toBeInTheDocument();
     expect(screen.queryByText('ninety (90) days')).not.toBeInTheDocument();
   });
 
+  it('names the clause it is about and opens it on request', async () => {
+    const user = userEvent.setup();
+    const onGoToClause = vi.fn();
+    renderWithPreferences(
+      <RuleCard clause={clause()} hit={ruleHit()} onGoToClause={onGoToClause} />,
+    );
+    expect(screen.getAllByText(/Clause 6\.1/)[0]).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Go to Clause 6.1' }));
+    expect(onGoToClause).toHaveBeenCalledWith('c001');
+  });
+
+  it('names an unnumbered clause by its paragraph', () => {
+    renderWithPreferences(
+      <RuleCard
+        clause={clause({ label: null, order: 2 })}
+        hit={ruleHit()}
+        onGoToClause={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Go to Paragraph 3' })).toBeInTheDocument();
+  });
+
+  it('offers no button where there is nowhere to go, and no clause line without a clause', () => {
+    const { rerender } = renderWithPreferences(<RuleCard clause={clause()} hit={ruleHit()} />);
+    expect(screen.queryByRole('button', { name: /go to/i })).not.toBeInTheDocument();
+
+    rerender(<RuleCard clause={undefined} hit={ruleHit()} onGoToClause={vi.fn()} />);
+    expect(screen.queryByText(/Clause 6\.1/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /go to/i })).not.toBeInTheDocument();
+  });
+
   it('has no axe violations', async () => {
-    const { container } = renderWithPreferences(<RuleCard hit={ruleHit()} />);
+    const { container } = renderWithPreferences(
+      <RuleCard clause={clause()} hit={ruleHit()} onGoToClause={vi.fn()} />,
+    );
     await expect(axe(container)).resolves.toHaveNoViolations();
   });
 });

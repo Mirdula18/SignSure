@@ -43,7 +43,7 @@ function renderList(focusedClauseId: string | null = null) {
 }
 
 describe('ClauseList', () => {
-  it('shows every finding and says how many', () => {
+  it('shows every clause and says how many', () => {
     renderList();
     expect(screen.getByText('Showing 3 of 3 clauses.')).toBeInTheDocument();
   });
@@ -92,6 +92,64 @@ describe('ClauseList', () => {
   it('opens the clause a citation pointed at', () => {
     renderList('c002');
     expect(screen.getAllByRole('button', { name: /hide the original text/i })).toHaveLength(1);
+  });
+
+  describe('with clauses that have no findings', () => {
+    const PLAIN = clause({
+      id: 'c004',
+      label: '9.1',
+      text: 'The Company will reimburse travel on production of receipts.',
+      order: 3,
+    });
+    const WITH_TWO = analysis({
+      findings: [
+        ...ANALYSIS.findings,
+        finding({ clauseId: 'c002', category: 'BOND_OR_EXIT_PENALTY', title: 'Second bond note' }),
+      ],
+    });
+
+    function renderAll(focused: string | null = null) {
+      return renderWithPreferences(
+        <ClauseList analysis={WITH_TWO} clauses={[...CLAUSES, PLAIN]} focusedClauseId={focused} />,
+      );
+    }
+
+    it('lists every clause, showing its own text when SignSure has nothing to add', () => {
+      renderAll();
+      expect(screen.getByText('Showing 4 of 4 clauses.')).toBeInTheDocument();
+      expect(screen.getByText(/reimburse travel on production of receipts/)).toBeInTheDocument();
+      expect(screen.getByText('SignSure has no notes on this clause.')).toBeInTheDocument();
+    });
+
+    it('gives each clause exactly one focusable citation target, however many findings it has', () => {
+      const { container } = renderAll();
+      const targets = [...container.querySelectorAll('[id^="clause-"]')].map((node) => node.id);
+      expect(targets).toEqual(['clause-c001', 'clause-c002', 'clause-c003', 'clause-c004']);
+      expect(container.querySelector('#clause-c004')).toHaveAttribute('tabindex', '-1');
+      const bond = container.querySelector('#clause-c002');
+      expect(bond?.querySelectorAll('article')).toHaveLength(2);
+    });
+
+    it('hides clauses without findings once a category or risk filter is chosen', async () => {
+      const user = userEvent.setup();
+      renderAll();
+      await user.selectOptions(screen.getByLabelText('Risk level'), 'INFO');
+      expect(screen.queryByText(/reimburse travel/)).not.toBeInTheDocument();
+      expect(screen.getByText('Showing 1 of 4 clauses.')).toBeInTheDocument();
+    });
+
+    it('finds a clause without findings by searching its text', async () => {
+      const user = userEvent.setup();
+      renderAll();
+      await user.type(screen.getByLabelText('Search the clauses'), 'receipts');
+      expect(screen.getByText('Showing 1 of 4 clauses.')).toBeInTheDocument();
+      expect(screen.getByText(/reimburse travel/)).toBeInTheDocument();
+    });
+
+    it('has no axe violations', async () => {
+      const { container } = renderAll();
+      await expect(axe(container)).resolves.toHaveNoViolations();
+    });
   });
 
   it('has no axe violations', async () => {

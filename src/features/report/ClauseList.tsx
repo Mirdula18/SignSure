@@ -1,13 +1,24 @@
 import { useId, useMemo, useState } from 'react';
 import { CLAUSE_CATEGORIES, RISK_LEVELS } from '@shared/types';
-import type { AnalysisResult, Clause, ClauseCategory, RiskLevel } from '@shared/types';
+import type {
+  AnalysisResult,
+  Clause,
+  ClauseCategory,
+  ClauseFinding,
+  RiskLevel,
+} from '@shared/types';
 import { normalize } from '@shared/normalize';
 import { categoryKey } from '@/i18n';
 import { useT } from '@/state/preferences';
 import { FindingCard } from './FindingCard';
+import { PlainClauseCard } from './PlainClauseCard';
 
 /**
- * Every clause, filterable.
+ * Every clause, in document order, filterable.
+ *
+ * Clauses with findings show them; the rest show their own text, so the whole document can be
+ * read here and a citation to any clause has somewhere to land. Each clause is wrapped once and
+ * that wrapper is the citation target, so two findings on one clause never share an id.
  *
  * Search runs over *normalised* text, the same normalisation quote verification uses, so
  * searching for "Rs. 2,00,000" finds the clause whether the document wrote it with a
@@ -35,18 +46,33 @@ export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListPro
   const searchId = useId();
   const searchHintId = useId();
 
-  const byId = useMemo(() => new Map(clauses.map((clause) => [clause.id, clause])), [clauses]);
+  const findingsByClause = useMemo(() => {
+    const grouped = new Map<string, ClauseFinding[]>();
+    for (const finding of analysis.findings) {
+      grouped.set(finding.clauseId, [...(grouped.get(finding.clauseId) ?? []), finding]);
+    }
+    return grouped;
+  }, [analysis.findings]);
 
+  // Each visible clause with the findings that pass the filters. With no category or risk
+  // filter, a clause with no findings still shows; with one, only clauses that match do.
   const visible = useMemo(() => {
     const needle = normalize(search);
-    return analysis.findings.filter((finding) => {
-      if (category !== 'ALL' && finding.category !== category) return false;
-      if (risk !== 'ALL' && finding.risk !== risk) return false;
-      if (needle.length === 0) return true;
-      const clause = byId.get(finding.clauseId);
-      return clause !== undefined && normalize(clause.text).includes(needle);
-    });
-  }, [analysis.findings, byId, category, risk, search]);
+    const filtering = category !== 'ALL' || risk !== 'ALL';
+    return clauses
+      .map((clause) => ({
+        clause,
+        findings: (findingsByClause.get(clause.id) ?? []).filter(
+          (finding) =>
+            (category === 'ALL' || finding.category === category) &&
+            (risk === 'ALL' || finding.risk === risk),
+        ),
+      }))
+      .filter(({ clause, findings }) => {
+        if (filtering && findings.length === 0) return false;
+        return needle.length === 0 || normalize(clause.text).includes(needle);
+      });
+  }, [clauses, findingsByClause, category, risk, search]);
 
   const presentCategories = useMemo(
     () =>
@@ -124,26 +150,37 @@ export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListPro
       </div>
 
       <p aria-live="polite" className="text-sm text-muted">
-        {t('clauses.count', { shown: visible.length, total: analysis.findings.length })}
+        {t('clauses.count', { shown: visible.length, total: clauses.length })}
       </p>
 
       {visible.length === 0 ? (
         <p className="text-sm text-muted">{t('clauses.none')}</p>
       ) : (
         <ol className="flex list-none flex-col gap-4 p-0">
-          {visible.map((finding) => {
-            const clause = byId.get(finding.clauseId);
-            if (!clause) return null;
-            return (
-              <li key={`${finding.clauseId}-${finding.title}`}>
-                <FindingCard
-                  finding={finding}
-                  clause={clause}
-                  defaultOpen={finding.clauseId === focusedClauseId}
-                />
-              </li>
-            );
-          })}
+          {visible.map(({ clause, findings }) => (
+            <li
+              key={clause.id}
+              id={`clause-${clause.id}`}
+              // -1 makes the clause a target for programmatic focus without adding a tab stop.
+              // Following a citation calls focus() on it; on an element that cannot take focus
+              // that call is a silent no-op and a keyboard user is left wherever they were.
+              tabIndex={-1}
+              className="flex scroll-mt-28 flex-col gap-3 rounded-xl"
+            >
+              {findings.length === 0 ? (
+                <PlainClauseCard clause={clause} />
+              ) : (
+                findings.map((finding) => (
+                  <FindingCard
+                    key={`${finding.title}-${finding.evidence.quote}`}
+                    finding={finding}
+                    clause={clause}
+                    defaultOpen={clause.id === focusedClauseId}
+                  />
+                ))
+              )}
+            </li>
+          ))}
         </ol>
       )}
     </div>

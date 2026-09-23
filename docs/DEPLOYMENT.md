@@ -13,7 +13,8 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
 
 [vars]
-GEMINI_MODEL = "gemini-2.5-flash"   # confirm the latest stable Flash ID before submitting
+GEMINI_MODEL = "gemini-3.8-flash"   # confirm the latest stable Flash ID before submitting
+GEMINI_THINKING = "minimal"          # or "auto" for a model that rejects the setting
 MOCK_GEMINI = "false"
 ALLOWED_ORIGIN = "https://signsure.pages.dev"
 

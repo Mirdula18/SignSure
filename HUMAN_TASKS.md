@@ -30,8 +30,13 @@ Work top to bottom. Items 1–5 are needed for a live deployment; 6–9 are for 
    land in `eval-results/` (gitignored). If it fails, send me the printed lists; each one names
    the contract and the rule or question involved.
 
-> Free-tier requests may be used by Google to improve their products. For judging day, enable
-> billing on the project so the key runs on the paid tier (see `docs/SECURITY.md` §3.6).
+> **The free tier allows 20 requests per day, per model.** Measured on 2026-09-23 with your key:
+> `GenerateRequestsPerDayPerProjectPerModel-FreeTier, limit: 20, model: gemini-3.8-flash`. One
+> full `npm run eval` is about 16 model calls, so it fits once a day and leaves nothing for
+> trying the app. Enable billing on the Google Cloud project before judging day: it also keeps
+> your documents out of Google's product improvement, which the free tier does not (see
+> `docs/SECURITY.md` §3.6). The quota is per model, so switching `GEMINI_MODEL` (for example to
+> `gemini-3.6-flash`) gives a separate daily allowance.
 
 ---
 

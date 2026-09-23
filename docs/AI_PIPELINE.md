@@ -4,12 +4,13 @@
 | Setting | Value |
 |---|---|
 | SDK | `@google/genai` (server only, in `functions/lib/gemini.ts`) |
-| Model | `env.GEMINI_MODEL`, default a current **Flash** model (e.g. `gemini-2.5-flash`; check the Gemini docs for the latest stable Flash ID at build time) |
+| Model | `env.GEMINI_MODEL`, default `gemini-3.8-flash` (D01). `gemini-2.5-flash` is retired: the API answers 404 and points at `gemini-3.6-flash`. Check the Gemini docs for the latest stable Flash ID before submitting. |
 | Output | `responseMimeType: "application/json"` + `responseSchema` |
 | Temperature | 0.2 (analysis, ask), 0.3 (prepare) |
 | Max output tokens | analyze 8k per batch, ask 1.5k, compare 4k, prepare 2k |
 | Safety settings | defaults; handle blocked responses → `MODEL_BLOCKED` |
-| Timeout | 25 s, 1 retry on 429/5xx |
+| Timeout | 25 s, and 45 s for analyze, which reads a whole document (D52); 1 retry on 5xx, none on 429 (D51) |
+| Thinking | `thinkingLevel: MINIMAL` on every call, since all of them are structured extraction; `GEMINI_THINKING=auto` hands the choice back to the model (D52) |
 
 ```ts
 const res = await ai.models.generateContent({

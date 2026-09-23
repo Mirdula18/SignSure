@@ -36,8 +36,6 @@ import {
   type QuestionRun,
 } from '../tests/evalMetrics.ts';
 
-/** Cloudflare's documented always-pass Turnstile secret: the eval has no browser to solve one. */
-const TURNSTILE_TEST_SECRET = '1x0000000000000000000000000000000AA';
 const REQUEST_TIMEOUT_MS = 120_000;
 
 const { values: args } = parseArgs({
@@ -58,7 +56,6 @@ const paceMs = Number(args.pace ?? (mock ? '0' : '6000'));
 process.env.MOCK_GEMINI = mock ? 'true' : 'false';
 process.env.SESSION_SECRET = randomBytes(32).toString('hex');
 process.env.IP_HASH_SALT = randomBytes(16).toString('hex');
-process.env.TURNSTILE_SECRET_KEY = TURNSTILE_TEST_SECRET;
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -186,13 +183,7 @@ async function main(): Promise<number> {
         forbiddenVerifiedQuotes: expected.forbiddenVerifiedQuotes ?? [],
       };
 
-      const session = await call(
-        base,
-        '/api/session',
-        { turnstileToken: 'eval' },
-        sessionResponseSchema,
-        ip,
-      );
+      const session = await call(base, '/api/session', {}, sessionResponseSchema, ip);
       if (!session.ok) {
         runs.push({
           ...expectations,

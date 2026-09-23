@@ -50,8 +50,8 @@ describe('public/_headers', () => {
     expect(SITE.has('content-security-policy')).toBe(true);
   });
 
-  it('allows scripts only from this site and the Turnstile challenge, never inline or eval', () => {
-    expect(CSP.get('script-src')).toEqual(["'self'", 'https://challenges.cloudflare.com']);
+  it('allows scripts only from this site, never inline, eval or a third party', () => {
+    expect(CSP.get('script-src')).toEqual(["'self'"]);
     for (const values of CSP.values()) {
       expect(values).not.toContain("'unsafe-eval'");
     }
@@ -67,6 +67,7 @@ describe('public/_headers', () => {
     expect(CSP.get('base-uri')).toEqual(["'self'"]);
     expect(CSP.get('form-action')).toEqual(["'self'"]);
     expect(CSP.get('frame-ancestors')).toEqual(["'none'"]);
+    expect(CSP.get('frame-src')).toEqual(["'none'"]);
   });
 
   it('allows blob workers only because pdf.js needs one', () => {

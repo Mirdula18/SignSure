@@ -39,11 +39,7 @@ export default defineConfig({
       MOCK_GEMINI: 'true',
       SESSION_SECRET: 'e2e only: a session secret of 32+ bytes',
       IP_HASH_SALT: 'e2e-ip-hash-salt',
-      TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
       ALLOWED_ORIGIN: BASE_URL,
-      // Cloudflare's documented always-passes test pair, so the suite exercises the real
-      // Turnstile -> session -> bearer-token path rather than skipping past it.
-      VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
     },
   },
 });

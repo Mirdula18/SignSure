@@ -25,7 +25,7 @@ const CLAUSES = [
 async function sessionFor(request: APIRequestContext, ip: string): Promise<string> {
   const response = await request.post('/api/session', {
     headers: { Origin: ORIGIN, 'CF-Connecting-IP': ip },
-    data: { turnstileToken: 'e2e-turnstile-token' },
+    data: {},
   });
   expect(response.status()).toBe(200);
   const body = (await response.json()) as { token: string };
@@ -97,7 +97,7 @@ test.describe('the API refuses what it should', () => {
   test('rejects a write from another site', async ({ request }) => {
     const response = await request.post('/api/session', {
       headers: { Origin: 'https://attacker.example' },
-      data: { turnstileToken: 'anything' },
+      data: {},
     });
     expect(response.status()).toBe(401);
   });

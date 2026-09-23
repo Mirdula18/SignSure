@@ -1,8 +1,18 @@
 import { localiseHit } from '@shared/rules';
-import type { RuleHit } from '@shared/types';
+import type { Clause, RuleHit } from '@shared/types';
 import { RiskBadge } from '@/components/Badge';
-import type { TranslationKey } from '@/i18n';
+import { Button } from '@/components/Button';
+import type { TranslateParams, TranslationKey } from '@/i18n';
 import { usePreferences } from '@/state/preferences';
+import { ClauseTitle } from './SideBySide';
+
+export interface RuleCardProps {
+  hit: RuleHit;
+  /** The clause the rule fired on; undefined only if the analysis names one we do not have. */
+  clause: Clause | undefined;
+  /** Opens the clause in the Clauses tab. Omitted where there is nowhere to go. */
+  onGoToClause?: (clauseId: string) => void;
+}
 
 /** Labels for the values a rule pulls out of a clause, such as a bond amount. */
 const DETAIL_LABELS: Readonly<Record<string, TranslationKey>> = {
@@ -18,6 +28,13 @@ function detailLabel(key: string, t: (key: TranslationKey) => string): string {
   return label === undefined ? key : t(label);
 }
 
+/** "Clause 5.2", or "Paragraph 3" for a clause with no number of its own. */
+function nameOf(clause: Clause, t: (key: TranslationKey, params?: TranslateParams) => string) {
+  return clause.label === null
+    ? t('clauses.paragraph', { order: clause.order + 1 })
+    : t('clauses.clauseLabel', { label: clause.label });
+}
+
 /**
  * A card from the India rule library.
  *
@@ -29,8 +46,11 @@ function detailLabel(key: string, t: (key: TranslationKey) => string): string {
  *
  * In Hindi the title, message and questions come from the reviewed translation in
  * `shared/rules/hindi.ts`; the basis stays as cited.
+ *
+ * It names the clause it is about, with a way to open it, because legal context is only useful
+ * next to the words it applies to.
  */
-export function RuleCard({ hit: original }: { hit: RuleHit }) {
+export function RuleCard({ hit: original, clause, onGoToClause }: RuleCardProps) {
   const { language, t } = usePreferences();
   const hit = localiseHit(original, language);
 
@@ -40,6 +60,22 @@ export function RuleCard({ hit: original }: { hit: RuleHit }) {
         <RiskBadge risk={hit.severity} />
         <h3 className="text-base font-semibold text-ink">{hit.title}</h3>
       </header>
+      {clause === undefined ? null : (
+        <div className="mt-1 flex flex-wrap items-center gap-x-3">
+          <ClauseTitle clause={clause} />
+          {onGoToClause === undefined ? null : (
+            <Button
+              variant="ghost"
+              className="px-1 underline"
+              onClick={() => {
+                onGoToClause(clause.id);
+              }}
+            >
+              {t('clauses.goTo', { clause: nameOf(clause, t) })}
+            </Button>
+          )}
+        </div>
+      )}
 
       <p className="prose-measure mt-2 text-sm leading-relaxed text-ink">{hit.message}</p>
 

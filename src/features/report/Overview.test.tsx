@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import type { Clause } from '@shared/types';
 import { Overview } from './Overview';
@@ -132,6 +133,17 @@ describe('Overview', () => {
       />,
     );
     expect(screen.getByText(/^Summarised by the AI\. Check each value/)).toBeInTheDocument();
+  });
+
+  it('lets a rule card open the clause it is about', async () => {
+    const user = userEvent.setup();
+    const onGoToClause = vi.fn();
+    renderWithPreferences(
+      <Overview analysis={analysis()} clauseById={byId} onGoToClause={onGoToClause} />,
+    );
+    const rules = screen.getByRole('region', { name: /legal context for india/i });
+    await user.click(within(rules).getByRole('button', { name: /^go to clause/i }));
+    expect(onGoToClause).toHaveBeenCalledWith('c001');
   });
 
   it('shows the missing information in Hindi to a Hindi reader', () => {

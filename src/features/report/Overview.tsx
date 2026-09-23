@@ -32,9 +32,11 @@ const SUMMARY_FIELDS = [
 export interface OverviewProps {
   analysis: AnalysisResult;
   clauseById: (id: string) => Clause | undefined;
+  /** Opens a clause in the Clauses tab, as following a citation does. */
+  onGoToClause?: (clauseId: string) => void;
 }
 
-export function Overview({ analysis, clauseById }: OverviewProps) {
+export function Overview({ analysis, clauseById, onGoToClause }: OverviewProps) {
   const { language, t } = usePreferences();
 
   const verifiedFindings = analysis.findings.filter(
@@ -131,7 +133,11 @@ export function Overview({ analysis, clauseById }: OverviewProps) {
           <ol className="mt-3 flex list-none flex-col gap-4 p-0">
             {analysis.ruleHits.map((hit) => (
               <li key={`${hit.ruleId}-${hit.clauseId}`}>
-                <RuleCard hit={hit} />
+                <RuleCard
+                  hit={hit}
+                  clause={clauseById(hit.clauseId)}
+                  {...(onGoToClause === undefined ? {} : { onGoToClause })}
+                />
               </li>
             ))}
           </ol>

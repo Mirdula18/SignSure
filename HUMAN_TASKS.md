@@ -82,7 +82,7 @@ Development already uses Cloudflare's documented always-pass test pair
 ## 5. Upload secrets and deploy (5 min)
 
 ```bash
-# 32+ random bytes each
+# 32+ characters for the secret, 16+ for the salt; this gives 64 hex characters
 node -e "console.log(crypto.randomUUID().replace(/-/g,'')+crypto.randomUUID().replace(/-/g,''))"
 
 npx wrangler pages secret put GEMINI_API_KEY       --project-name signsure
@@ -102,6 +102,11 @@ Then set, in **Settings → Variables and Secrets** (plain text, not secret):
 | `ALLOWED_ORIGIN` | your live origin, e.g. `https://signsure.pages.dev` (optional: same-origin requests, including preview deployments and custom domains, are always allowed) |
 | `VITE_TURNSTILE_SITE_KEY` | your Turnstile site key (build variable) |
 | `NODE_VERSION` | `22` |
+
+> **Plan note.** Pages Functions share the Workers CPU limit: 10 ms per request on the Free plan,
+> 30 s on the Paid plan. Waiting for Gemini does not count, but our own verification and rules do,
+> and a long document can pass 10 ms. The $5/month Workers Paid plan avoids error 1102 on
+> anything larger than the sample letter.
 
 Smoke test afterwards: `curl -s https://<your-domain>/api/health` should return
 `{"ok":true,"mode":"live",...}` with every `configured` flag `true`, and
@@ -147,5 +152,4 @@ Keep one submission attempt in reserve.
 |---|---|---|
 | `wrangler.toml` | `REPLACE_WITH_KV_NAMESPACE_ID` | KV namespace id from task 3 |
 | `wrangler.toml` | `ALLOWED_ORIGIN` | your live origin |
-| `README.md` | `docs/screenshots/*.png` | real screenshots |
 | `README.md` | live URL, blog URL | the real URLs |

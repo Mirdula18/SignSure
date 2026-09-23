@@ -62,7 +62,7 @@ npx wrangler pages secret put GEMINI_API_KEY --project-name signsure
 - Lighthouse (mobile): Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95.
 
 ## 6. Limits to remember
-- Pages Functions run on Workers: free plan CPU time per request is small (≈10 ms), but waiting on Gemini doesn't count as CPU. Keep parsing in the browser.
+- Pages Functions run on the Workers runtime and count towards your Workers plan, so the Workers CPU limit applies: **10 ms of CPU per request on the Free plan**, 30 s by default on the Paid plan (Cloudflare limits page, checked 2026-09-23). Waiting on Gemini is not CPU, so the model call itself is free; our own work is not. Measured locally: quote verification and the rule engine on a 26-clause letter are a few milliseconds, but comparing two 150-clause versions is about 120 ms. **A long document on the Free plan can exceed 10 ms and fail with error 1102.** Use the Workers Paid plan for anything beyond the sample, and keep parsing in the browser.
 - Workers free plan subrequest cap per invocation; batch Gemini calls (≤ 4 parallel).
 - Gemini free-tier RPM/RPD are low; keep `MOCK_GEMINI` for development and use the real key for demo/eval. Consider a paid key for judging day.
 

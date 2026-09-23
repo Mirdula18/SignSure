@@ -127,8 +127,18 @@ test.describe('responses carry the security headers', () => {
   });
 
   test('without leaking any configuration value from the health check', async ({ request }) => {
-    const body = JSON.stringify(await (await request.get('/api/health')).json());
-    expect(body).not.toMatch(/AIza|secret|salt|1x0000/i);
+    const health = (await (await request.get('/api/health')).json()) as {
+      mode: string;
+      configured: Record<string, unknown>;
+    };
+
+    // Every answer about configuration is a yes or no. Checking the values, not the serialised
+    // text: a field may be *named* after a secret ("ipSalt") without disclosing one.
+    for (const [name, value] of Object.entries(health.configured)) {
+      expect(typeof value, name).toBe('boolean');
+    }
+    expect(['mock', 'live']).toContain(health.mode);
+    expect(JSON.stringify(Object.values(health.configured))).not.toMatch(/AIza|1x0000/i);
   });
 });
 

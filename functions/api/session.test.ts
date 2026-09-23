@@ -113,14 +113,19 @@ describe('POST /api/session', () => {
     });
   });
 
-  it('still issues a verifiable token when no IP hash salt is configured', async () => {
+  it.each([
+    ['missing', undefined],
+    ['too short to hide an address', 'short-salt'],
+  ])('refuses to issue a token when the IP salt is %s', async (_label, salt) => {
+    // An unsalted hash of an IPv4 address can be reversed by trying every address, so the
+    // rate-limit keys would be storing addresses. A deployment fault, reported by /api/health.
     const env = testEnv();
-    delete env.IP_HASH_SALT;
+    if (salt === undefined) delete env.IP_HASH_SALT;
+    else env.IP_HASH_SALT = salt;
     const response = await call({ request: sessionRequest(), env });
 
-    expect(response.status).toBe(200);
-    const { token } = sessionResponseSchema.parse(await response.json());
-    expect((await verifySession(token, SECRET, await hashIp(IP, ''))).ok).toBe(true);
+    expect(response.status).toBe(500);
+    expect(apiErrorSchema.parse(await response.json()).error.code).toBe('INTERNAL');
   });
 
   it('reports the remaining budget in the rate-limit headers', async () => {
@@ -369,11 +374,21 @@ describe('requireSession', () => {
     expect(verdict.response.status).toBe(500);
   });
 
-  it('hashes the IP with the same salt the issuing route uses, including no salt at all', async () => {
-    const { token } = await issueSession(SECRET, await hashIp(IP, ''));
+  it('hashes the IP with the same salt the issuing route uses', async () => {
+    const { token } = await issueSession(SECRET, await hashIp(IP, SALT));
+    const verdict = await requireSession(protectedRequest(`Bearer ${token}`), {
+      SESSION_SECRET: SECRET,
+      IP_HASH_SALT: SALT,
+    });
+    expect(verdict).toEqual({ ok: true, ipHash: await hashIp(IP, SALT) });
+  });
+
+  it('refuses a request when the deployment has no usable IP salt', async () => {
+    const { token } = await issueSession(SECRET, await hashIp(IP, SALT));
     const verdict = await requireSession(protectedRequest(`Bearer ${token}`), {
       SESSION_SECRET: SECRET,
     });
-    expect(verdict).toEqual({ ok: true, ipHash: await hashIp(IP, '') });
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.response.status).toBe(500);
   });
 });

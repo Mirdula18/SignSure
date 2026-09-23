@@ -35,6 +35,7 @@ describe('GET /api/health', () => {
       gemini: false,
       turnstile: false,
       session: false,
+      ipSalt: false,
       rateLimitStore: false,
     });
   });

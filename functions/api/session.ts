@@ -1,5 +1,5 @@
 import { sessionRequestSchema } from '../../shared/schemas';
-import { sessionSecret, type Env } from '../lib/env';
+import { ipHashSalt, sessionSecret, type Env } from '../lib/env';
 import { bearerToken, clientIp, errorResponse, json, parseBody } from '../lib/http';
 import { checkRateLimit, rateLimitHeaders } from '../lib/ratelimit';
 import { hashIp, issueSession, verifySession } from '../lib/session';
@@ -16,7 +16,10 @@ import { verifyTurnstile } from '../lib/turnstile';
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const ip = clientIp(request);
-  const salt = env.IP_HASH_SALT ?? '';
+  const salt = ipHashSalt(env);
+  // Without a usable salt the hash would give the address away. It is a deployment fault, not
+  // the caller's, and `/api/health` reports it.
+  if (salt === null) return errorResponse('INTERNAL');
   const ipHash = await hashIp(ip, salt);
 
   const rate = await checkRateLimit(env.RATE_LIMIT_KV, 'session', ipHash);
@@ -62,10 +65,13 @@ export async function requireSession(
   const secret = sessionSecret(env);
   if (secret === null) return { ok: false, response: errorResponse('INTERNAL') };
 
+  const salt = ipHashSalt(env);
+  if (salt === null) return { ok: false, response: errorResponse('INTERNAL') };
+
   const token = bearerToken(request);
   if (token === null) return { ok: false, response: errorResponse('UNAUTHORIZED') };
 
-  const ipHash = await hashIp(clientIp(request), env.IP_HASH_SALT ?? '');
+  const ipHash = await hashIp(clientIp(request), salt);
   const verdict = await verifySession(token, secret, ipHash);
   if (!verdict.ok) return { ok: false, response: errorResponse('UNAUTHORIZED') };
 

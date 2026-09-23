@@ -43,6 +43,20 @@ export function sessionSecret(env: Env): string | null {
   return secret !== undefined && secret.length >= MIN_SESSION_SECRET_LENGTH ? secret : null;
 }
 
+const MIN_IP_HASH_SALT_LENGTH = 16;
+
+/**
+ * The salt for hashing client IPs, or null when it is missing or too short.
+ *
+ * An unsalted hash of an IPv4 address can be reversed by trying all four billion of them, so
+ * rate-limit keys and session bindings would quietly be storing addresses. Like the session
+ * secret, a salt that is not usable is treated as absent, and the routes refuse to run on it.
+ */
+export function ipHashSalt(env: Env): string | null {
+  const salt = env.IP_HASH_SALT;
+  return salt !== undefined && salt.length >= MIN_IP_HASH_SALT_LENGTH ? salt : null;
+}
+
 /** True when the API should answer from fixtures instead of calling Gemini. */
 export function isMockMode(env: Env): boolean {
   return env.MOCK_GEMINI === 'true';

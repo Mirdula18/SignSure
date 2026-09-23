@@ -27,6 +27,35 @@ function postJson(body: string): Request {
   return new Request(URL_UNDER_TEST, { method: 'POST', body });
 }
 
+/**
+ * A POST whose body arrives in pieces with no declared length, as a chunked upload does. It
+ * records how many pieces were pulled and whether the reader gave up, so a test can tell a
+ * capped read from one that buffered everything.
+ */
+function chunked(pieces: readonly string[]) {
+  const encoder = new TextEncoder();
+  let pulled = 0;
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const piece = pieces[pulled];
+      pulled += 1;
+      if (piece === undefined) controller.close();
+      else controller.enqueue(encoder.encode(piece));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  // `duplex` is required by the runtime for a streamed request body; the Workers types omit it.
+  const init = { method: 'POST', body: stream, duplex: 'half' } as RequestInit;
+  return {
+    request: new Request(URL_UNDER_TEST, init),
+    pulled: () => pulled,
+    cancelled: () => cancelled,
+  };
+}
+
 function withHeaders(headers: Record<string, string>): Request {
   return new Request(URL_UNDER_TEST, { headers });
 }
@@ -132,6 +161,27 @@ describe('parseBody', () => {
       askSchema,
     );
     expect(response.status).toBe(400);
+  });
+
+  it('reads a body sent in chunks without a length', async () => {
+    const { request } = chunked(['{"question":', '"Notice period?"}']);
+    expect(await parseBody(request, askSchema)).toEqual({
+      ok: true,
+      data: { question: 'Notice period?' },
+    });
+  });
+
+  it('stops reading a chunked body the moment it passes the cap, and answers 413', async () => {
+    // A chunked upload declares no length, so the middleware cannot reject it up front.
+    const piece = 'x'.repeat(64 * 1024);
+    const { request, pulled, cancelled } = chunked(Array.from({ length: 50 }, () => piece));
+    const response = await rejectionFrom(request, askSchema);
+
+    expect(response.status).toBe(413);
+    expect(apiErrorSchema.parse(await response.json()).error.code).toBe('TOO_LARGE');
+    expect(cancelled()).toBe(true);
+    // 256 KB is four 64 KB pieces and a bit: nowhere near the fifty on offer.
+    expect(pulled()).toBeLessThan(10);
   });
 
   it('rejects a body the schema refuses with a 400', async () => {

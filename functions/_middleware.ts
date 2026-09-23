@@ -64,7 +64,8 @@ function withSecurityHeaders(response: Response): Response {
 }
 
 /**
- * Declared body size, when the client states one. Chunked uploads are caught by the route.
+ * Declared body size, when the client states one. A body sent without a length (chunked) is
+ * capped as it is read, in `parseBody`.
  *
  * Only a bare digit string counts, which is all RFC 9110 permits. `Number.parseInt` on its own
  * would read "1e9" as 1 and "-1" as -1, both of which would sail past the cap.

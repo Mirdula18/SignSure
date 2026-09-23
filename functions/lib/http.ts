@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { LIMITS } from '../../shared/limits';
 import type { ApiErrorCode } from '../../shared/types';
 
 /**
@@ -45,7 +46,7 @@ const STATUS_BY_CODE: Readonly<Record<ApiErrorCode, number>> = {
  */
 const MESSAGE_BY_CODE: Readonly<Record<ApiErrorCode, string>> = {
   INVALID_INPUT: 'That request could not be processed. Please try again.',
-  UNAUTHORIZED: 'Your session has expired. Please reload the page.',
+  UNAUTHORIZED: 'The security check needs renewing. Please try again in a moment.',
   TOO_LARGE: 'That document is too large. Please try a shorter one.',
   RATE_LIMITED: 'Too many requests. Please wait a little and try again.',
   MODEL_BLOCKED: 'The assistant could not process this document safely.',
@@ -79,6 +80,38 @@ export function errorResponse(code: ApiErrorCode, extraHeaders: HeadersInit = {}
 export type ParsedBody<T> = { ok: true; data: T } | { ok: false; response: Response };
 
 /**
+ * The body as text, or null as soon as it passes `limit` bytes.
+ *
+ * The middleware rejects an oversized body from its declared length, but a chunked upload
+ * declares none. Reading the stream ourselves and stopping at the limit is what stops such a
+ * body being buffered and parsed whole.
+ */
+async function readBounded(request: Request, limit: number): Promise<string | null> {
+  if (request.body === null) return '';
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = (await reader.read()) as { done: boolean; value?: unknown };
+    if (done) break;
+    if (!(value instanceof Uint8Array)) continue;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+/**
  * Reads and validates a JSON body.
  *
  * Returns the error *response* rather than throwing, so a route reads as a straight line and
@@ -89,9 +122,12 @@ export async function parseBody<S extends z.ZodType>(
   request: Request,
   schema: S,
 ): Promise<ParsedBody<z.infer<S>>> {
+  const text = await readBounded(request, LIMITS.maxRequestBytes);
+  if (text === null) return { ok: false, response: errorResponse('TOO_LARGE') };
+
   let raw: unknown;
   try {
-    raw = await request.json();
+    raw = JSON.parse(text);
   } catch {
     return { ok: false, response: errorResponse('INVALID_INPUT') };
   }

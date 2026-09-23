@@ -1,6 +1,6 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import type { z } from 'zod';
-import { isMockMode, modelId, thinkingLevel, type Env } from './env';
+import { isMockMode, modelId, thinkingLadder, type Env } from './env';
 import type { ApiErrorCode } from '../../shared/types';
 
 /**
@@ -44,6 +44,18 @@ const MAX_TRANSIENT_RETRIES = 1;
 
 function backoffMs(): number {
   return 400 + Math.floor(Math.random() * 400);
+}
+
+/**
+ * The model refusing the thinking setting itself, rather than the request.
+ *
+ * Models differ: `gemini-3.7-flash` answers 400 "Thinking level MINIMAL is not supported for
+ * this model" while others accept it. The caller steps down the ladder and tries again instead
+ * of failing a request over a performance hint.
+ */
+function isThinkingUnsupported(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /thinking/i.test(message) && /\b400\b|INVALID_ARGUMENT/.test(message);
 }
 
 /**
@@ -106,7 +118,10 @@ function createMockClient(mockResponder: MockResponder | undefined): GeminiClien
 function createLiveClient(env: Env): GeminiClient {
   const apiKey = env.GEMINI_API_KEY;
   const model = modelId(env);
-  const thinking = thinkingLevel(env);
+  // Where this model sits on the ladder. Remembered, so a model that refuses a level costs one
+  // extra call once rather than on every request.
+  const ladder = thinkingLadder(env);
+  let rung = 0;
 
   return {
     async generate<S extends z.ZodType>(
@@ -120,9 +135,16 @@ function createLiveClient(env: Env): GeminiClient {
       let lastFailure: GeminiFailure = 'INTERNAL';
 
       for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
-        const outcome = await callOnce(ai, model, options, thinking);
+        const outcome = await callOnce(ai, model, options, ladder[rung] ?? null);
         if (outcome.kind === 'ok') return { ok: true, data: outcome.data as z.infer<S> };
         if (outcome.kind === 'fatal') return { ok: false, code: outcome.code };
+        if (outcome.kind === 'thinking-unsupported') {
+          // Not a failure of the request: step down and try the same call again, without
+          // spending one of the retries meant for a flaky upstream.
+          rung += 1;
+          attempt -= 1;
+          continue;
+        }
         lastFailure = outcome.code;
         if (attempt < MAX_TRANSIENT_RETRIES) await sleep(backoffMs());
       }
@@ -136,7 +158,7 @@ function createLiveClient(env: Env): GeminiClient {
             ...options,
             userPrompt: `${options.userPrompt}\n\nReturn valid JSON only, matching the schema exactly. No markdown, no commentary.`,
           },
-          thinking,
+          ladder[rung] ?? null,
         );
         if (repair.kind === 'ok') return { ok: true, data: repair.data as z.infer<S> };
       }
@@ -154,6 +176,8 @@ type CallOutcome =
   | { kind: 'ok'; data: unknown }
   /** Retrying could help. */
   | { kind: 'transient'; code: GeminiFailure }
+  /** The model rejected the thinking hint; the same call with less of it should work. */
+  | { kind: 'thinking-unsupported' }
   /** Retrying cannot help; return immediately. */
   | { kind: 'fatal'; code: GeminiFailure };
 
@@ -161,7 +185,7 @@ async function callOnce<S extends z.ZodType>(
   ai: GoogleGenAI,
   model: string,
   options: GenerateOptions<S>,
-  thinking: 'MINIMAL' | null,
+  thinking: 'MINIMAL' | 'LOW' | null,
 ): Promise<CallOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => {
@@ -179,7 +203,9 @@ async function callOnce<S extends z.ZodType>(
         temperature: options.temperature,
         maxOutputTokens: options.maxOutputTokens,
         // Structured extraction, not reasoning: see `thinkingLevel` in lib/env.ts.
-        ...(thinking === null ? {} : { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } }),
+        ...(thinking === null
+          ? {}
+          : { thinkingConfig: { thinkingLevel: ThinkingLevel[thinking] } }),
         abortSignal: controller.signal,
       },
     });
@@ -203,6 +229,7 @@ async function callOnce<S extends z.ZodType>(
     return { kind: 'ok', data: parsed.data };
   } catch (error) {
     if (controller.signal.aborted) return { kind: 'fatal', code: 'UPSTREAM_TIMEOUT' };
+    if (isThinkingUnsupported(error)) return { kind: 'thinking-unsupported' };
     if (isQuotaExhausted(error)) return { kind: 'fatal', code: 'RATE_LIMITED' };
     if (isTransient(error)) return { kind: 'transient', code: 'INTERNAL' };
     return { kind: 'fatal', code: 'INTERNAL' };

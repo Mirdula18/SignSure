@@ -71,15 +71,17 @@ export function modelId(env: Env): string {
 }
 
 /**
- * How much the model should think before answering: minimal by default.
+ * How much the model should think before answering, least first.
  *
  * Every call we make is structured extraction against a response schema - find the clauses,
  * quote them, fill the fields - which is not the kind of work extended reasoning improves. Left
  * on automatic, a Flash model spent so long thinking that a whole-document analysis passed the
- * request timeout every time (measured against gemini-3.6-flash on 2026-09-23). Set
- * `GEMINI_THINKING=auto` to hand the decision back to the model, for a model that rejects or
- * ignores the setting.
+ * request timeout every time (measured against gemini-3.6-flash on 2026-09-23).
+ *
+ * A ladder rather than one value because models disagree about which levels they accept:
+ * `gemini-3.7-flash` refuses `MINIMAL` outright. The client steps down it when a model says no,
+ * and falls back to the model's own choice at the end. `GEMINI_THINKING=auto` skips it entirely.
  */
-export function thinkingLevel(env: Env): 'MINIMAL' | null {
-  return env.GEMINI_THINKING?.trim().toLowerCase() === 'auto' ? null : 'MINIMAL';
+export function thinkingLadder(env: Env): readonly ('MINIMAL' | 'LOW')[] {
+  return env.GEMINI_THINKING?.trim().toLowerCase() === 'auto' ? [] : ['MINIMAL', 'LOW'];
 }

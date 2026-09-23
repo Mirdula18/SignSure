@@ -28,8 +28,8 @@ const genai = vi.hoisted(() => {
 });
 
 vi.mock('@google/genai', () => ({
-  // The client asks for minimal thinking, so the fake module must carry the enum too.
-  ThinkingLevel: { MINIMAL: 'MINIMAL' },
+  // The client maps its ladder through this enum, so the fake module carries it as well.
+  ThinkingLevel: { MINIMAL: 'MINIMAL', LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH' },
   GoogleGenAI: class {
     readonly models = { generateContent: genai.generateContent };
 
@@ -201,6 +201,42 @@ describe('createGeminiClient in live mode', () => {
     expect(genai.generateContent.mock.calls[0]![0].config?.thinkingConfig).toEqual({
       thinkingLevel: 'MINIMAL',
     });
+  });
+
+  it('steps down to LOW when a model refuses MINIMAL, and remembers it', async () => {
+    // gemini-3.7-flash answers 400 "Thinking level MINIMAL is not supported for this model".
+    const refusal = new Error('[400 Bad Request] Thinking level MINIMAL is not supported');
+    genai.generateContent.mockRejectedValueOnce(refusal).mockResolvedValue(reply(VALID));
+    const client = live();
+
+    expect(await settle(client.generate(OPTIONS))).toEqual({
+      ok: true,
+      data: { answer: 'Thirty days.' },
+    });
+    expect(genai.generateContent.mock.calls[1]![0].config?.thinkingConfig).toEqual({
+      thinkingLevel: 'LOW',
+    });
+
+    // The next call starts where the last one left off rather than paying for the refusal again.
+    await settle(client.generate(OPTIONS));
+    expect(genai.generateContent.mock.calls[2]![0].config?.thinkingConfig).toEqual({
+      thinkingLevel: 'LOW',
+    });
+  });
+
+  it('drops the hint entirely when every level is refused, rather than failing the request', async () => {
+    const refusal = new Error('INVALID_ARGUMENT: thinking_level is not supported');
+    genai.generateContent
+      .mockRejectedValueOnce(refusal)
+      .mockRejectedValueOnce(refusal)
+      .mockResolvedValueOnce(reply(VALID));
+
+    expect(await settle(live().generate(OPTIONS))).toEqual({
+      ok: true,
+      data: { answer: 'Thirty days.' },
+    });
+    expect(genai.generateContent).toHaveBeenCalledTimes(3);
+    expect(genai.generateContent.mock.calls[2]![0].config?.thinkingConfig).toBeUndefined();
   });
 
   it('leaves the decision to the model when GEMINI_THINKING is auto', async () => {

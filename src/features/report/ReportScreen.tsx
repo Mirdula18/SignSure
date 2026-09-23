@@ -306,7 +306,7 @@ export function ReportScreen() {
               {/* A check that failed outright cannot be renewed in the background. */}
               {t(
                 state.sessionStatus === 'failed'
-                  ? 'turnstile.failed'
+                  ? 'session.failed'
                   : errorKeyFor(state.analysisError),
               )}
             </p>

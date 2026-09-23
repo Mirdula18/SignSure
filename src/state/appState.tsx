@@ -45,7 +45,7 @@ export interface AppState {
   /**
    * Whether a session is still being obtained.
    *
-   * Needed because the reader can reach "Analyse" before Turnstile has finished: without this
+   * Needed because the reader can reach "Analyse" before the session has arrived: without this
    * the report cannot tell "no token yet" from "no token ever", and would either spin forever
    * or fail on a race it should simply have waited out.
    */

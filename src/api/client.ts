@@ -97,10 +97,9 @@ export interface Preferences {
 }
 
 export async function createSession(
-  turnstileToken: string,
   options?: RequestOptions,
 ): Promise<{ token: string; expiresAt: number }> {
-  return post('/api/session', { turnstileToken }, sessionResponseSchema, null, options);
+  return post('/api/session', {}, sessionResponseSchema, null, options);
 }
 
 export async function analyzeDocument(

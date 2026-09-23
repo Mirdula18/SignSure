@@ -1,10 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ClientModule from '@/api/client';
 import { screen, waitFor } from '@testing-library/react';
-import { axe } from 'vitest-axe';
 import { SessionGate } from './SessionGate';
 import { renderWithProviders } from '@/test/factories';
-import { installTurnstile, uninstallTurnstile } from '@/test/turnstile';
 import { useAppState } from '@/state/appState';
 
 const api = vi.hoisted(() => ({ createSession: vi.fn() }));
@@ -31,31 +29,19 @@ function renderGate() {
 
 beforeEach(() => {
   api.createSession.mockReset();
-  vi.stubEnv('VITE_TURNSTILE_SITE_KEY', 'test-site-key');
-});
-
-afterEach(() => {
-  uninstallTurnstile();
-  vi.unstubAllEnvs();
 });
 
 describe('SessionGate', () => {
-  it('exchanges a passed check for a session', async () => {
-    installTurnstile((options) => {
-      options.callback('turnstile-token');
-    });
+  it('asks for a session as soon as it is mounted', async () => {
     api.createSession.mockResolvedValue({ token: 'session', expiresAt: 1 });
     renderGate();
     await waitFor(() => {
       expect(screen.getByLabelText('session')).toHaveTextContent('ready');
     });
-    expect(api.createSession).toHaveBeenCalledWith('turnstile-token');
+    expect(api.createSession).toHaveBeenCalledTimes(1);
   });
 
   it('records a refused session so a waiting analysis can say so at once', async () => {
-    installTurnstile((options) => {
-      options.callback('turnstile-token');
-    });
     api.createSession.mockRejectedValue(new Error('nope'));
     renderGate();
     await waitFor(() => {
@@ -63,27 +49,32 @@ describe('SessionGate', () => {
     });
   });
 
-  it('records a failed security check without asking for a session', async () => {
-    installTurnstile((options) => {
-      options['error-callback']?.();
-    });
-    renderGate();
-    await waitFor(() => {
-      expect(screen.getByLabelText('session')).toHaveTextContent('failed');
-    });
-    expect(api.createSession).not.toHaveBeenCalled();
-  });
-
-  it('stays pending while the check is still running', () => {
-    installTurnstile();
+  it('stays pending while the request is in flight', () => {
+    api.createSession.mockReturnValue(new Promise(() => undefined));
     renderGate();
     expect(screen.getByLabelText('session')).toHaveTextContent('pending');
-    expect(screen.getByText(/quick automatic check/i)).toBeInTheDocument();
   });
 
-  it('has no axe violations', async () => {
-    installTurnstile();
-    const { container } = renderGate();
-    await expect(axe(container)).resolves.toHaveNoViolations();
+  it('asks only once, however often the effect is re-run', async () => {
+    // Every mount costs one of the ten sessions an address gets in ten minutes, and React runs
+    // effects twice in development, so a second request here would halve the real budget.
+    api.createSession.mockResolvedValue({ token: 'session', expiresAt: 1 });
+    const { rerender } = renderGate();
+    rerender(
+      <>
+        <SessionGate />
+        <SessionProbe />
+      </>,
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('session')).toHaveTextContent('ready');
+    });
+    expect(api.createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders nothing of its own: there is no check for the reader to pass', () => {
+    api.createSession.mockReturnValue(new Promise(() => undefined));
+    const { container } = renderWithProviders(<SessionGate />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

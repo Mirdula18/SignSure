@@ -30,10 +30,12 @@ describe('UploadScreen', () => {
     expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|sample');
   });
 
-  it('does not start the security check, so reading the home page never contacts Cloudflare', () => {
+  it('loads no third-party script, so reading the home page contacts nobody', () => {
     renderWithProviders(<UploadScreen />);
-    expect(document.querySelector('script[src*="challenges.cloudflare.com"]')).toBeNull();
-    expect(screen.queryByText(/quick automatic check/i)).not.toBeInTheDocument();
+    const external = [...document.querySelectorAll('script[src]')].filter((script) =>
+      /^https?:/i.test(script.getAttribute('src') ?? ''),
+    );
+    expect(external).toEqual([]);
   });
 
   it('says clearly that the sample is made up', () => {

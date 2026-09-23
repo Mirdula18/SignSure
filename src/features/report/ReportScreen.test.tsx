@@ -189,9 +189,9 @@ describe('ReportScreen: analysis', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('reports a failed security check rather than spinning forever', async () => {
+  it('reports a session that never arrived rather than spinning forever', async () => {
     renderWithProviders(<ReportScreen />, { ...LOADING, session: null, sessionStatus: 'failed' });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/security check did not pass/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not start a session/i);
   });
 
   it('reports an empty document as an error rather than sending it', async () => {

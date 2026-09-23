@@ -11,7 +11,7 @@ function reduce(state: AppState, ...actions: Parameters<typeof appReducer>[1][])
 
 describe('appReducer', () => {
   describe('the session', () => {
-    it('starts pending, so a request made before Turnstile finishes waits instead of failing', () => {
+    it('starts pending, so a request made before the session lands waits instead of failing', () => {
       expect(initialState.sessionStatus).toBe('pending');
       expect(initialState.session).toBeNull();
     });

@@ -17,7 +17,7 @@ export const en = {
   'app.disclaimerLink': 'Read the full disclaimer',
   'app.privacy': 'Privacy',
   'app.privacyNote':
-    "Your file never leaves your browser. The text of its clauses, and any question you ask, is sent through SignSure's server to Google's Gemini API to be explained; SignSure does not store or log it, and Google's Gemini API terms apply to it. The security check uses Cloudflare Turnstile. Only your language and reading-level choices are saved in this browser, and Clear everything removes the document from this page.",
+    "Your file never leaves your browser. The text of its clauses, and any question you ask, is sent through SignSure's server to Google's Gemini API to be explained; SignSure does not store or log it, and Google's Gemini API terms apply to it. Only your language and reading-level choices are saved in this browser, and Clear everything removes the document from this page.",
   'app.footerNote':
     'SignSure is an educational tool. It does not create a lawyer-client relationship and its output may be incomplete or wrong. Laws differ by state and change over time. Please consult a qualified advocate before relying on any interpretation.',
   'app.startOver': 'Clear everything',
@@ -292,7 +292,7 @@ export const en = {
   /* -------------------------------------- errors --------------------------------- */
   'error.INVALID_INPUT': 'Something about that request was not right. Please try again.',
   'error.UNAUTHORIZED':
-    'The security check needed renewing, and SignSure is renewing it now. Please try again in a moment. Your document is still here.',
+    'Your session needed renewing, and SignSure is renewing it now. Please try again in a moment. Your document is still here.',
   'error.TOO_LARGE': 'That document is too large to analyse. Try a shorter one.',
   'error.RATE_LIMITED': 'You have made a lot of requests. Please wait a minute and try again.',
   'error.MODEL_BLOCKED':
@@ -329,9 +329,8 @@ export const en = {
   'glossary.jurisdiction.definition':
     'Which courts, in which city, would hear a dispute about this contract.',
 
-  /* -------------------------------------- turnstile ------------------------------ */
-  'turnstile.hint': 'A quick automatic check that you are a person. Usually nothing to do.',
-  'turnstile.failed': 'The security check did not pass. Please reload the page.',
+  /* --------------------------------------- session -------------------------------- */
+  'session.failed': 'SignSure could not start a session for this document. Please reload the page.',
 } as const;
 
 export type TranslationKey = keyof typeof en;

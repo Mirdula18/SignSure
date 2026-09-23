@@ -151,9 +151,9 @@ const ENDPOINTS: readonly Endpoint[] = [
     name: 'createSession',
     path: '/api/session',
     token: null,
-    sent: { turnstileToken: 'turnstile-ok' },
+    sent: {},
     valid: SESSION,
-    call: (options) => createSession('turnstile-ok', options),
+    call: (options) => createSession(options),
   },
   {
     name: 'analyzeDocument',

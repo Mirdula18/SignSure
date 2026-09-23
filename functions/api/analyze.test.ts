@@ -146,6 +146,7 @@ interface ModelCall {
   schema: z.ZodType;
   temperature: number;
   maxOutputTokens: number;
+  timeoutMs: number | undefined;
 }
 
 /** Raw model output, schema-checked as the real client would, or a failure code. */
@@ -178,6 +179,7 @@ function scriptModel(reply: (call: ModelCall) => Reply): Script {
         schema: options.schema,
         temperature: options.temperature,
         maxOutputTokens: options.maxOutputTokens,
+        timeoutMs: options.timeoutMs,
       };
       calls.push(recorded);
       inFlight += 1;
@@ -363,6 +365,8 @@ describe('POST /api/analyze with a scripted model', () => {
     expect(sent.schema).toBe(analyzeModelOutputSchema);
     expect(sent.temperature).toBe(0.2);
     expect(sent.maxOutputTokens).toBe(8192);
+    // Reading a whole document takes longer than answering one question about it.
+    expect(sent.timeoutMs).toBe(45_000);
   });
 
   it('drops a finding about a clause id that was never sent, since there is nothing to check it against', async () => {

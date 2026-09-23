@@ -16,6 +16,8 @@ export interface Env {
 
   /** Plain var. Model id, e.g. "gemini-3.8-flash". */
   GEMINI_MODEL?: string;
+  /** `minimal` (default) or `auto`; see `thinkingLevel`. */
+  GEMINI_THINKING?: string;
   /** Plain var. "true" disables all network calls and serves fixtures. */
   MOCK_GEMINI?: string;
   /** Plain var. Exact origin allowed to call the API. */
@@ -66,4 +68,18 @@ export function isMockMode(env: Env): boolean {
 export function modelId(env: Env): string {
   const configured = env.GEMINI_MODEL?.trim();
   return configured && configured.length > 0 ? configured : DEFAULT_MODEL;
+}
+
+/**
+ * How much the model should think before answering: minimal by default.
+ *
+ * Every call we make is structured extraction against a response schema - find the clauses,
+ * quote them, fill the fields - which is not the kind of work extended reasoning improves. Left
+ * on automatic, a Flash model spent so long thinking that a whole-document analysis passed the
+ * request timeout every time (measured against gemini-3.6-flash on 2026-09-23). Set
+ * `GEMINI_THINKING=auto` to hand the decision back to the model, for a model that rejects or
+ * ignores the setting.
+ */
+export function thinkingLevel(env: Env): 'MINIMAL' | null {
+  return env.GEMINI_THINKING?.trim().toLowerCase() === 'auto' ? null : 'MINIMAL';
 }

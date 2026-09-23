@@ -25,6 +25,15 @@ import { requireSession } from './session';
 const TEMPERATURE = 0.2;
 const MAX_OUTPUT_TOKENS = 8192;
 
+/**
+ * Longer than the default deadline, because this is the one call that reads a whole document
+ * and writes a finding for every clause worth one. Measured on 2026-09-23 against
+ * gemini-3.6-flash, the 26-clause sample letter did not finish inside 25 seconds; asking a
+ * question about the same document took about 7. The reader waits on a progress message, and a
+ * late report beats a failed one.
+ */
+const ANALYZE_TIMEOUT_MS = 45_000;
+
 /** Splits clauses into prompt-sized batches so a long contract does not blow the token budget. */
 export function batchClauses(
   clauses: readonly Clause[],
@@ -88,6 +97,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       schema: analyzeModelOutputSchema,
       temperature: TEMPERATURE,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
+      timeoutMs: ANALYZE_TIMEOUT_MS,
     }),
   );
 

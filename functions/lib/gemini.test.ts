@@ -28,6 +28,8 @@ const genai = vi.hoisted(() => {
 });
 
 vi.mock('@google/genai', () => ({
+  // The client asks for minimal thinking, so the fake module must carry the enum too.
+  ThinkingLevel: { MINIMAL: 'MINIMAL' },
   GoogleGenAI: class {
     readonly models = { generateContent: genai.generateContent };
 
@@ -189,6 +191,47 @@ describe('createGeminiClient in live mode', () => {
     expect(params.config?.temperature).toBe(0.2);
     expect(params.config?.maxOutputTokens).toBe(256);
     expect(params.config?.abortSignal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('asks for minimal thinking, because every call is structured extraction', async () => {
+    // Measured on 2026-09-23: left to think freely, a whole-document analysis passed the
+    // request deadline every time, while a single question came back in about seven seconds.
+    genai.generateContent.mockResolvedValue(reply(VALID));
+    await settle(live().generate(OPTIONS));
+    expect(genai.generateContent.mock.calls[0]![0].config?.thinkingConfig).toEqual({
+      thinkingLevel: 'MINIMAL',
+    });
+  });
+
+  it('leaves the decision to the model when GEMINI_THINKING is auto', async () => {
+    genai.generateContent.mockResolvedValue(reply(VALID));
+    await settle(live({ ...LIVE, GEMINI_THINKING: 'auto' }).generate(OPTIONS));
+    expect(genai.generateContent.mock.calls[0]![0].config?.thinkingConfig).toBeUndefined();
+  });
+
+  it('gives a call its own deadline when one is asked for, as analyze does', async () => {
+    genai.generateContent.mockImplementation(
+      (params) =>
+        new Promise<FakeResponse>((_resolve, reject) => {
+          params.config?.abortSignal?.addEventListener('abort', () => {
+            reject(new Error('The operation was aborted'));
+          });
+        }),
+    );
+
+    let settled = false;
+    const pending = live()
+      .generate({ ...OPTIONS, timeoutMs: 45_000 })
+      .finally(() => {
+        settled = true;
+      });
+
+    // Still waiting where the default deadline would already have given up.
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 1_000);
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(await pending).toEqual({ ok: false, code: 'UPSTREAM_TIMEOUT' });
   });
 
   it('calls the model named in GEMINI_MODEL when one is configured', async () => {

@@ -1,6 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import type { z } from 'zod';
-import { isMockMode, modelId, type Env } from './env';
+import { isMockMode, modelId, thinkingLevel, type Env } from './env';
 import type { ApiErrorCode } from '../../shared/types';
 
 /**
@@ -32,6 +32,8 @@ export interface GenerateOptions<S extends z.ZodType> {
   schema: S;
   temperature: number;
   maxOutputTokens: number;
+  /** Overrides the default deadline for a call that legitimately takes longer. */
+  timeoutMs?: number;
 }
 
 /** A user is waiting, so a slow model is a failure rather than something to wait out. */
@@ -104,6 +106,7 @@ function createMockClient(mockResponder: MockResponder | undefined): GeminiClien
 function createLiveClient(env: Env): GeminiClient {
   const apiKey = env.GEMINI_API_KEY;
   const model = modelId(env);
+  const thinking = thinkingLevel(env);
 
   return {
     async generate<S extends z.ZodType>(
@@ -117,7 +120,7 @@ function createLiveClient(env: Env): GeminiClient {
       let lastFailure: GeminiFailure = 'INTERNAL';
 
       for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
-        const outcome = await callOnce(ai, model, options);
+        const outcome = await callOnce(ai, model, options, thinking);
         if (outcome.kind === 'ok') return { ok: true, data: outcome.data as z.infer<S> };
         if (outcome.kind === 'fatal') return { ok: false, code: outcome.code };
         lastFailure = outcome.code;
@@ -126,10 +129,15 @@ function createLiveClient(env: Env): GeminiClient {
 
       // The model produced something unparseable; ask once more for JSON only before failing.
       if (lastFailure === 'MODEL_INVALID_OUTPUT') {
-        const repair = await callOnce(ai, model, {
-          ...options,
-          userPrompt: `${options.userPrompt}\n\nReturn valid JSON only, matching the schema exactly. No markdown, no commentary.`,
-        });
+        const repair = await callOnce(
+          ai,
+          model,
+          {
+            ...options,
+            userPrompt: `${options.userPrompt}\n\nReturn valid JSON only, matching the schema exactly. No markdown, no commentary.`,
+          },
+          thinking,
+        );
         if (repair.kind === 'ok') return { ok: true, data: repair.data as z.infer<S> };
       }
 
@@ -153,11 +161,12 @@ async function callOnce<S extends z.ZodType>(
   ai: GoogleGenAI,
   model: string,
   options: GenerateOptions<S>,
+  thinking: 'MINIMAL' | null,
 ): Promise<CallOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => {
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, options.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
   try {
     const response = await ai.models.generateContent({
@@ -169,6 +178,8 @@ async function callOnce<S extends z.ZodType>(
         responseSchema: options.responseSchema,
         temperature: options.temperature,
         maxOutputTokens: options.maxOutputTokens,
+        // Structured extraction, not reasoning: see `thinkingLevel` in lib/env.ts.
+        ...(thinking === null ? {} : { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } }),
         abortSignal: controller.signal,
       },
     });

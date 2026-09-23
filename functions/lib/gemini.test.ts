@@ -285,7 +285,6 @@ describe('createGeminiClient in live mode', () => {
 
   it.each([
     ['a 503 from the API', new Error('got status: 503 Service Unavailable')],
-    ['a 429 quota error', new Error('[429 Too Many Requests] RESOURCE_EXHAUSTED')],
     ['an overloaded model', new Error('The model is overloaded. Please try again later.')],
     ['a rate-limit message', new Error('Rate limit exceeded for this project')],
     ['a non-Error rejection', 'upstream unavailable'],
@@ -297,6 +296,20 @@ describe('createGeminiClient in live mode', () => {
     });
     expect(genai.generateContent).toHaveBeenCalledTimes(2);
   });
+
+  it.each([
+    ['a 429', new Error('[429 Too Many Requests] RESOURCE_EXHAUSTED')],
+    ['a quota message', new Error('You exceeded your current quota, please check your plan')],
+  ])(
+    'reports %s as RATE_LIMITED at once, without spending another call',
+    async (_label, failure) => {
+      // Found by a live eval run against an exhausted free tier: the reader was told "something
+      // went wrong" after two calls, when the truth was "wait and try again".
+      genai.generateContent.mockRejectedValue(failure);
+      expect(await settle(live().generate(OPTIONS))).toEqual({ ok: false, code: 'RATE_LIMITED' });
+      expect(genai.generateContent).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('waits between a transient failure and its retry, so retries do not hammer the API', async () => {
     genai.generateContent

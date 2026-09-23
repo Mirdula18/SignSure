@@ -18,7 +18,7 @@ import type { ApiErrorCode } from '../../shared/types';
 
 export type GeminiFailure = Extract<
   ApiErrorCode,
-  'MODEL_BLOCKED' | 'MODEL_INVALID_OUTPUT' | 'UPSTREAM_TIMEOUT' | 'INTERNAL'
+  'MODEL_BLOCKED' | 'MODEL_INVALID_OUTPUT' | 'UPSTREAM_TIMEOUT' | 'RATE_LIMITED' | 'INTERNAL'
 >;
 
 export type GeminiResult<T> = { ok: true; data: T } | { ok: false; code: GeminiFailure };
@@ -44,9 +44,22 @@ function backoffMs(): number {
   return 400 + Math.floor(Math.random() * 400);
 }
 
+/**
+ * A quota or rate limit at Google, rather than a blip.
+ *
+ * Kept apart from the transient failures below because retrying cannot help: the second call
+ * spends quota that is already gone, and the reader waits through the backoff for the same
+ * answer. Reported as RATE_LIMITED so they are told to wait and try again, which is true,
+ * instead of "something went wrong", which is not.
+ */
+function isQuotaExhausted(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b429\b|RESOURCE_EXHAUSTED|exceeded your current quota|quota exceeded/i.test(message);
+}
+
 function isTransient(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /\b(429|500|502|503|504)\b|overloaded|unavailable|rate limit/i.test(message);
+  return /\b(500|502|503|504)\b|overloaded|unavailable|rate limit/i.test(message);
 }
 
 /** Strips a ```json fence, which models sometimes add despite being asked for raw JSON. */
@@ -179,6 +192,7 @@ async function callOnce<S extends z.ZodType>(
     return { kind: 'ok', data: parsed.data };
   } catch (error) {
     if (controller.signal.aborted) return { kind: 'fatal', code: 'UPSTREAM_TIMEOUT' };
+    if (isQuotaExhausted(error)) return { kind: 'fatal', code: 'RATE_LIMITED' };
     if (isTransient(error)) return { kind: 'transient', code: 'INTERNAL' };
     return { kind: 'fatal', code: 'INTERNAL' };
   } finally {

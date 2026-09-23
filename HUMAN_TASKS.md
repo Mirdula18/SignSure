@@ -37,6 +37,11 @@ Work top to bottom. Items 1–5 are needed for a live deployment; 6–9 are for 
 > your documents out of Google's product improvement, which the free tier does not (see
 > `docs/SECURITY.md` §3.6). The quota is per model, so switching `GEMINI_MODEL` (for example to
 > `gemini-3.6-flash`) gives a separate daily allowance.
+>
+> **Free-tier capacity is not guaranteed either.** On 2026-09-23 several Flash models answered
+> 503 "This model is currently experiencing high demand" for minutes at a time, which is why the
+> live eval has not been completed yet. Billing removes both problems; enable it before the demo
+> rather than on the day.
 
 ---
 

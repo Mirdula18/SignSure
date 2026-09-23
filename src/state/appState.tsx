@@ -90,6 +90,7 @@ export const initialState: AppState = {
 export type AppAction =
   | { type: 'sessionReady'; session: { token: string; expiresAt: number } }
   | { type: 'sessionFailed' }
+  | { type: 'sessionExpired' }
   | { type: 'documentParsed'; document: ParsedDocument }
   | { type: 'lensesChosen'; lenses: Lens[] }
   | { type: 'analysisStarted' }
@@ -115,6 +116,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'sessionFailed':
       return { ...state, sessionStatus: 'failed' };
+
+    case 'sessionExpired':
+      // The server refused the token: it lapsed after thirty minutes, or the reader's network
+      // changed. Dropping it makes the session gate run the check again in the background,
+      // instead of the reader reloading and losing their document.
+      return { ...state, session: null, sessionStatus: 'pending' };
 
     case 'documentParsed':
       // A new document invalidates everything derived from the old one, so the reducer resets

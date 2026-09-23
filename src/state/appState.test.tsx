@@ -25,6 +25,17 @@ describe('appReducer', () => {
     it('records a failed security check', () => {
       expect(reduce(initialState, { type: 'sessionFailed' }).sessionStatus).toBe('failed');
     });
+
+    it('drops a refused session so the check runs again, keeping the document and report', () => {
+      const withReport = reduce(reduce(initialState, { type: 'sessionReady', session: SESSION }), {
+        type: 'documentParsed',
+        document: parsedDocument(),
+      });
+      const expired = reduce(withReport, { type: 'sessionExpired' });
+      expect(expired.session).toBeNull();
+      expect(expired.sessionStatus).toBe('pending');
+      expect(expired.document).toBe(withReport.document);
+    });
   });
 
   describe('a new document', () => {

@@ -12,7 +12,7 @@ import {
   parsedDocument,
   renderWithProviders,
 } from '@/test/factories';
-import type { AppState } from '@/state/appState';
+import { useAppState, type AppState } from '@/state/appState';
 
 /**
  * ReportScreen owns every network call, so the API client is replaced wholesale here. That keeps
@@ -77,6 +77,84 @@ beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset();
 });
 
+/**
+ * Shows the session the screen is working with, and stands in for the session gate: the
+ * button hands over a fresh token, as a renewed security check would.
+ */
+function SessionProbe() {
+  const { state, dispatch } = useAppState();
+  return (
+    <div>
+      <output aria-label="session">
+        {state.sessionStatus}|{state.session?.token ?? 'none'}
+      </output>
+      <button
+        type="button"
+        onClick={() => {
+          dispatch({ type: 'sessionReady', session: { token: 'token-2', expiresAt: 2 } });
+        }}
+      >
+        renew
+      </button>
+    </div>
+  );
+}
+
+describe('ReportScreen: an expired session', () => {
+  it('renews the session and runs the analysis again, without asking the reader to reload', async () => {
+    const user = userEvent.setup();
+    api.analyzeDocument
+      .mockRejectedValueOnce(new ApiError('UNAUTHORIZED', false))
+      .mockResolvedValueOnce(analysis());
+    renderWithProviders(
+      <>
+        <ReportScreen />
+        <SessionProbe />
+      </>,
+      LOADING,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('session')).toHaveTextContent('pending|none');
+    });
+    // Still loading, not failed: the reader sees progress, not an error.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'renew' }));
+    expect(await screen.findByRole('tab', { name: /overview/i })).toBeInTheDocument();
+    expect(api.analyzeDocument).toHaveBeenCalledTimes(2);
+    expect(api.analyzeDocument.mock.calls[1]?.[0]).toBe('token-2');
+  });
+
+  it('gives up after one renewal, so a server that keeps refusing cannot loop', async () => {
+    const user = userEvent.setup();
+    api.analyzeDocument.mockRejectedValue(new ApiError('UNAUTHORIZED', false));
+    renderWithProviders(
+      <>
+        <ReportScreen />
+        <SessionProbe />
+      </>,
+      LOADING,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('session')).toHaveTextContent('pending|none');
+    });
+    await user.click(screen.getByRole('button', { name: 'renew' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/renewing it now/i);
+    expect(api.analyzeDocument).toHaveBeenCalledTimes(2);
+  });
+
+  it('says so instead of doing nothing when preparing without a session', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ReportScreen />, { ...READY, session: null, sessionStatus: 'pending' });
+    await user.click(screen.getByRole('tab', { name: /prepare/i }));
+    await user.click(screen.getByRole('button', { name: /build/i }));
+    expect(await screen.findByText(/renewing it now/i)).toBeInTheDocument();
+    expect(api.preparePack).not.toHaveBeenCalled();
+  });
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -113,7 +191,7 @@ describe('ReportScreen: analysis', () => {
 
   it('reports a failed security check rather than spinning forever', async () => {
     renderWithProviders(<ReportScreen />, { ...LOADING, session: null, sessionStatus: 'failed' });
-    expect(await screen.findByRole('alert')).toHaveTextContent(/session has expired/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/security check did not pass/i);
   });
 
   it('reports an empty document as an error rather than sending it', async () => {
@@ -257,13 +335,31 @@ describe('ReportScreen: asking', () => {
     });
   });
 
-  it('does nothing without a session', async () => {
+  it('says the check is being renewed, rather than ignoring the click, while there is no session', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ReportScreen />, { ...READY, session: null });
+    renderWithProviders(<ReportScreen />, { ...READY, session: null, sessionStatus: 'pending' });
     await user.click(screen.getByRole('tab', { name: /^ask$/i }));
     await user.type(screen.getByLabelText(/your question/i), 'Is anyone there?');
     await user.click(screen.getByRole('button', { name: /^ask$/i }));
     expect(api.askQuestion).not.toHaveBeenCalled();
+    expect(await screen.findByText(/renewing it now/i)).toBeInTheDocument();
+  });
+
+  it('renews the session when an answer is refused, and asks the reader to try again', async () => {
+    const user = userEvent.setup();
+    api.askQuestion.mockRejectedValue(new ApiError('UNAUTHORIZED', false));
+    renderWithProviders(
+      <>
+        <ReportScreen />
+        <SessionProbe />
+      </>,
+      READY,
+    );
+    await user.click(screen.getByRole('tab', { name: /^ask$/i }));
+    await user.type(screen.getByLabelText(/your question/i), 'What is my notice period?');
+    await user.click(screen.getByRole('button', { name: /^ask$/i }));
+    expect(await screen.findByText(/renewing it now/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('session')).toHaveTextContent('pending|none');
   });
 });
 

@@ -16,5 +16,5 @@ ALLOWED_ORIGIN = "https://signsure.pages.dev"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-# Replace with the id printed by: npx wrangler kv namespace create RATE_LIMIT_KV
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+# The "signsure-rate-limit" namespace. An id is not a secret; it only works with this account.
+id = "319b0a1a968f4c20bde368143070e763"

@@ -64,7 +64,7 @@ signsure/
 │  ├─ components/                 # generic UI (Button, Tabs, Badge, Dialog, Skeleton)
 │  ├─ features/
 │  │  ├─ upload/                  # Dropzone, paste text, sample
-│  │  ├─ session/                 # SessionGate, TurnstileWidget (D37)
+│  │  ├─ session/                 # SessionGate, TurnstileWidget
 │  │  ├─ parsing/                 # pdfParser.ts, docxParser.ts, segmenter.ts
 │  │  ├─ lenses/
 │  │  ├─ report/                  # Overview, ClauseList, SideBySide, RedFlagCard, RuleCard
@@ -85,7 +85,7 @@ signsure/
 ├─ .github/workflows/ci.yml
 ├─ wrangler.toml
 ├─ .dev.vars.example
-├─ CLAUDE.md, README.md, docs/
+├─ README.md, docs/
 └─ package.json, tsconfig*.json, vite.config.ts, eslint.config.js
 ```
 
@@ -149,7 +149,7 @@ export interface AskResult {
 ## 4. Request flow
 
 ### 4.1 Session
-1. Once a document is loaded, `App` mounts `SessionGate`, which renders Turnstile and on success calls `POST /api/session { turnstileToken }`. It stays mounted across the concern and report screens until a session exists (DECISIONS D37).
+1. Once a document is loaded, `App` mounts `SessionGate`, which renders Turnstile and on success calls `POST /api/session { turnstileToken }`. It stays mounted across the concern and report screens until a session exists.
 2. Server verifies with Cloudflare siteverify, returns `{ token }`: an HMAC-SHA256 signed payload `{ iat, exp (30 min), ipHash }`.
 3. All other `/api/*` calls send `Authorization: Bearer <token>`. Prevents direct scripted abuse of the Gemini proxy without re-solving Turnstile per call.
 
@@ -177,7 +177,7 @@ POST /api/ask { clauses, question, history?: last 4 Q/A, language, readingLevel 
 Server post-rule: if `status === 'answered'` but zero citations verify → downgrade to `not_in_document` with message "I couldn't find support for an answer in your document."
 
 ### 4.4 Compare
-Deterministic first: pair clauses across A/B by matching label, then by token-set similarity (Jaccard ≥ 0.35), with each clause tokenised once (DECISIONS D42). Gemini only summarises *meaningful* differences per pair and returns quotes from both sides, each verified.
+Deterministic first: pair clauses across A/B by matching label, then by token-set similarity (Jaccard ≥ 0.35), with each clause tokenised once. Gemini only summarises *meaningful* differences per pair and returns quotes from both sides, each verified.
 
 ### 4.5 Prepare
 Input: findings + ruleHits + unanswered questions. Output: checklist, questions for HR, questions for a lawyer, missing information, documents to bring. Rule-engine questions are always included verbatim.

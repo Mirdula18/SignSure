@@ -6,7 +6,7 @@
 | Unit | Vitest | `shared/*` (normalize, verify, rules, lenses, schemas), `functions/lib/*` (session, ratelimit, http), segmenter |
 | API handler | Vitest + mocked Gemini + in-memory KV | Each `/api/*` route: happy path, validation errors, auth, rate limit, model failures, verification downgrade |
 | Component | Vitest + React Testing Library + `vitest-axe` | Upload, LensPicker, ClauseCard, SideBySide, AskPanel states, PrepareSheet export |
-| End-to-end | Playwright (Chromium desktop + Pixel 7) + `@axe-core/playwright` | Full journeys, accessibility and security suites against `vite build` + `vite preview` with the Pages Functions mounted in-process (`tools/pagesFunctions.ts`) and `MOCK_GEMINI=true`. Wrangler needs Node 22, so it is used to deploy, not to test (DECISIONS D05). |
+| End-to-end | Playwright (Chromium desktop + Pixel 7) + `@axe-core/playwright` | Full journeys, accessibility and security suites against `vite build` + `vite preview` with the Pages Functions mounted in-process (`tools/pagesFunctions.ts`) and `MOCK_GEMINI=true`. Wrangler needs Node 22, so it is used to deploy, not to test. |
 | Golden set (offline) | Vitest, `tests/golden.test.ts` | Six synthetic contracts: segmentation, the rule library and missing-information rules against expectations a reader would agree with. Runs on every `npm test`, no key needed. |
 | Config | Vitest, `tests/headers.test.ts` | Pins the CSP and hardening headers in `public/_headers`, which the preview server does not serve. |
 | AI eval | `npm run eval` (real Gemini, manual) · `npm run eval -- --mock` (harness check) | Golden set through the live HTTP API; metrics in `tests/evalMetrics.ts` (unit tested). See AI_PIPELINE.md §9. |
@@ -59,7 +59,7 @@
 
 ## 4. Fixtures
 - `tests/fixtures/contracts/`: six synthetic `.txt` offer letters with `.expected.json` beside each (fair, bond-heavy, its revised version for Compare, non-compete-heavy, missing-notice, prompt-injection). Under 20 KB in total, enforced by a test.
-- Mock mode does not replay recorded responses. `functions/lib/mock/` builds each response from the clause text in the prompt, so quotes still go through real verification (DECISIONS D19). Recording real responses is optional follow-up in `HUMAN_TASKS.md`.
+- Mock mode does not replay recorded responses. `functions/lib/mock/` builds each response from the clause text in the prompt, so quotes still go through real verification. Recording real responses is a possible follow-up.
 - No binary fixtures. The PDF and DOCX parser tests stub pdf.js and mammoth at their boundary and test our code around them: page numbering, the scanned-PDF check, error mapping. The E2E suite builds its "executable renamed to .pdf" file in memory.
 
 ## 5. CI (`.github/workflows/ci.yml`)

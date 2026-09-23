@@ -8,13 +8,13 @@ SignSure helps first-time job seekers in India understand their offer letter or 
 
 > ⚖️ SignSure provides legal *information*, not legal advice. It helps you understand your document and prepare the right questions for a qualified lawyer.
 
-**Live app:** _added after deployment (see [`HUMAN_TASKS.md`](HUMAN_TASKS.md))_ · **Try it without a file:** press *Try with a sample offer letter*.
+**Live app:** _added after deployment_ · **Try it without a file:** press *Try with a sample offer letter*.
 
 | Report | Every claim beside its source |
 |---|---|
-| ![The report overview for the sample offer letter: at-a-glance summary, verification count and a high-risk bond finding with a verified-quote badge](docs/screenshots/report.jpg) | ![A bond finding opened side by side with clause 5.2, the verified quote highlighted in the original text](docs/screenshots/side-by-side.jpg) |
+| ![The report overview for the sample offer letter: at-a-glance summary, verification count and a high-risk bond finding with a verified-quote badge](docs/screenshots/report.webp) | ![A bond finding opened side by side with clause 5.2, the verified quote highlighted in the original text](docs/screenshots/side-by-side.webp) |
 | **Says when the document is silent** | **On a phone, in dark mode** |
-| ![The Ask tab answering "Your document does not say this" to a question about parents' health insurance, with questions to ask instead](docs/screenshots/ask-refusal.jpg) | ![The report on a 390 px wide phone screen in dark mode](docs/screenshots/phone-report.jpg) |
+| ![The Ask tab answering "Your document does not say this" to a question about parents' health insurance, with questions to ask instead](docs/screenshots/ask-refusal.webp) | ![The report on a 390 px wide phone screen in dark mode](docs/screenshots/phone-report.webp) |
 
 <sub>Screenshots use the built-in synthetic sample letter in mock mode.</sub>
 
@@ -78,14 +78,14 @@ flowchart LR
 | Initial JavaScript | **117.6 kB** gzip against a 180 kB budget (enforced in CI); pdf.js, mammoth and the report load on demand |
 | Lighthouse (production build, local, 2026-09-22) | Accessibility **100** · Best practices **100** · SEO **100** · Performance 98 desktop, 74–92 mobile (simulated slow 4G, 4× CPU) |
 | Security checks | Secret scan, `npm audit` (0 vulnerabilities), CSP pinned by test, 401 / 413 / 429 paths tested end to end |
-| Repository | 2.0 MB across 210 tracked files |
+| Repository | 1.7 MB across 202 tracked files |
 
 ## How this project maps to the judging criteria
 
 | Criterion | Evidence |
 |---|---|
 | **Problem statement alignment** | Built for one audience and one decision: signing an Indian offer letter. Rule texts cite primary sources with review dates ([`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md)); cautious wording is enforced by tests; the disclaimer is on every screen. |
-| **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; 50 recorded design decisions in [`docs/DECISIONS.md`](docs/DECISIONS.md). |
+| **Code quality** | TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), no `any`, no lint disables; pure logic in `shared/` shared by browser and Workers; every non-obvious choice explained in a short comment beside the code it governs. |
 | **Security** | Key only in Functions `env`; Turnstile → HMAC session bound to a hashed IP; KV rate limits; 256 KB body cap; origin check; CSP with no inline or eval script; prompt fences sanitised; no server logging of document text. Checklist with evidence in [`docs/SECURITY.md`](docs/SECURITY.md) §4. |
 | **Efficiency** | Parsing happens on the device; only clause text is sent. Parsers, the report and the Turnstile script load only when needed; initial JS budget enforced in CI. |
 | **Testing** | Unit, component, API-handler, golden-set, E2E and axe layers, run in CI on every push ([`docs/TESTING.md`](docs/TESTING.md)); `npm run eval` scores the live model against the golden set. |
@@ -110,7 +110,7 @@ The golden set in [`tests/fixtures/contracts/`](tests/fixtures/contracts) has si
 Requires Node 20.19 or newer. `npm install` prints `EBADENGINE` warnings for `wrangler`,
 `miniflare`, `pdfjs-dist` and `@testing-library/jest-dom`, which all ask for Node 22. They are
 warnings, not errors: pdf.js runs in the browser, wrangler and miniflare are only used to deploy
-(on Node 22), and the test suite passes on 20.19. CI runs Node 22 (DECISIONS D04, D05).
+(on Node 22), and the test suite passes on 20.19. CI runs Node 22.
 
 ```bash
 npm install
@@ -118,7 +118,7 @@ cp .dev.vars.example .dev.vars   # MOCK_GEMINI=true by default: no key needed
 npm run dev                      # app and API together on http://localhost:5173
 ```
 
-The Pages Functions run inside the Vite dev server (`tools/pagesFunctions.ts`), so the whole stack runs with one command. Mock mode builds realistic responses from your document's own clauses, so verification and the rules behave exactly as they do live. To use the real model, put a Gemini key in `.dev.vars` and set `MOCK_GEMINI=false`. Deployment uses `wrangler`, which needs Node 22: see [`HUMAN_TASKS.md`](HUMAN_TASKS.md) and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+The Pages Functions run inside the Vite dev server (`tools/pagesFunctions.ts`), so the whole stack runs with one command. Mock mode builds realistic responses from your document's own clauses, so verification and the rules behave exactly as they do live. To use the real model, put a Gemini key in `.dev.vars` and set `MOCK_GEMINI=false`. Deployment uses `wrangler`, which needs Node 22: see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 | Script | Purpose |
 |---|---|
@@ -153,9 +153,7 @@ tools/       Vite plugin that runs Pages Functions locally
 - [`docs/LEGAL_RULES.md`](docs/LEGAL_RULES.md): the India employment rule library and its sources
 - [`docs/UX_FLOW.md`](docs/UX_FLOW.md) · [`docs/ACCESSIBILITY.md`](docs/ACCESSIBILITY.md): screens, interaction and accessibility
 - [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/TESTING.md`](docs/TESTING.md): threat model, checklist, test strategy
-- [`docs/DECISIONS.md`](docs/DECISIONS.md): every gap, trade-off and assumption, with the reason
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · [`HUMAN_TASKS.md`](HUMAN_TASKS.md): deploying, and the steps that need an account
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) · [`docs/SUBMISSION.md`](docs/SUBMISSION.md) · [`docs/BLOG_DRAFT.md`](docs/BLOG_DRAFT.md): plan and log, submission kit, blog draft
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): deploying to Cloudflare Pages, and the steps that need an account
 
 ## Disclaimer
 

@@ -17,7 +17,7 @@
 | Malicious files (zip bombs, huge PDFs) | Browser hang | Type sniffing (magic bytes `%PDF`, `PK`), 10 MB cap, 40-page cap, parse in try/catch with timeout |
 | Oversized API payloads | CPU/cost | 256 KB request body cap in middleware; Zod max lengths |
 | PII leakage | Privacy harm | No server logging of bodies; optional client-side redaction of emails/phones/PAN/Aadhaar-like numbers before sending; no analytics on content |
-| CSRF / cross-origin use | Abuse | Bearer token (not cookies); writes must come from the same origin or `ALLOWED_ORIGIN` (DECISIONS D35); no permissive CORS |
+| CSRF / cross-origin use | Abuse | Bearer token (not cookies); writes must come from the same origin or `ALLOWED_ORIGIN`; no permissive CORS |
 | Clickjacking | UI redress | `frame-ancestors 'none'`, `X-Frame-Options: DENY` |
 | Dependency vulnerabilities | Supply chain | `npm audit` in CI, lockfile, minimal dependencies, Dependabot |
 | Hallucinated legal claims | User harm | Verification pipeline, refusal path, reviewed rule text, disclaimers, escalation language |
@@ -63,7 +63,7 @@ The authoritative copy is `public/_headers`, pinned by `tests/headers.test.ts`:
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
 ```
-`style-src 'unsafe-inline'` is a deliberate trade-off (DECISIONS D08); inline *scripts* stay
+`style-src 'unsafe-inline'` is a deliberate trade-off; inline *scripts* stay
 blocked. API responses also set `Cache-Control: no-store`.
 
 ### 3.6 Privacy (aligned with the spirit of India's DPDP Act, 2023)
@@ -77,7 +77,7 @@ blocked. API responses also set `Cache-Control: no-store`.
 - [x] `git grep -nE "AIza[0-9A-Za-z_-]{20,}"` returns nothing — verified 2026-09-21; `npm run secretscan` (run in CI) checks this and five other credential shapes on every push.
 - [x] `.dev.vars`, `.env*` in `.gitignore` — `.dev.vars`, `.dev.vars.*`, `.env`, `.env.*` ignored; only the `.example` files are tracked.
 - [x] No `dangerouslySetInnerHTML`, no `eval`, no `new Function` — banned by three `no-restricted-syntax` selectors in `eslint.config.js` (lint runs in CI); `git grep` finds them only in comments explaining the ban.
-- [ ] CSP header present on deployed site (check with securityheaders.com) — **needs the live URL** (`HUMAN_TASKS.md`). The file that sets it, `public/_headers`, is pinned by `tests/headers.test.ts`: no inline or eval script, `connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`.
+- [ ] CSP header present on deployed site (check with securityheaders.com) — **needs the live URL**, so it is checked right after the first deploy. The file that sets it, `public/_headers`, is pinned by `tests/headers.test.ts`: no inline or eval script, `connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`.
 - [x] Calling `/api/analyze` without token → 401 — `e2e/security.spec.ts` ("rejects /api/analyze without a session token", plus forged and replayed-from-another-network tokens).
 - [x] 9th analyze in an hour → 429 — `e2e/security.spec.ts` ("refuses the ninth analysis from one address within the hour") and `functions/lib/ratelimit.test.ts`.
 - [x] 300 KB body → 413 — `e2e/security.spec.ts` ("rejects a 300 KB body before the route reads it") and `functions/_middleware.test.ts`.

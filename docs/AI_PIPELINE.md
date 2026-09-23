@@ -4,13 +4,13 @@
 | Setting | Value |
 |---|---|
 | SDK | `@google/genai` (server only, in `functions/lib/gemini.ts`) |
-| Model | `env.GEMINI_MODEL`, default `gemini-3.8-flash` (D01). `gemini-2.5-flash` is retired: the API answers 404 and points at `gemini-3.6-flash`. Check the Gemini docs for the latest stable Flash ID before submitting. |
+| Model | `env.GEMINI_MODEL`, default `gemini-3.8-flash`. `gemini-2.5-flash` is retired: the API answers 404 and points at `gemini-3.6-flash`. Check the Gemini docs for the latest stable Flash ID before submitting. |
 | Output | `responseMimeType: "application/json"` + `responseSchema` |
 | Temperature | 0.2 (analysis, ask), 0.3 (prepare) |
 | Max output tokens | analyze 8k per batch, ask 1.5k, compare 4k, prepare 2k |
 | Safety settings | defaults; handle blocked responses → `MODEL_BLOCKED` |
-| Timeout | 25 s, and 45 s for analyze, which reads a whole document (D52); 1 retry on 5xx, none on 429 (D51) |
-| Thinking | `thinkingLevel: MINIMAL` on every call, since all of them are structured extraction; `GEMINI_THINKING=auto` hands the choice back to the model (D52) |
+| Timeout | 25 s, and 45 s for analyze, which reads a whole document; 1 retry on 5xx, none on 429 |
+| Thinking | `thinkingLevel: MINIMAL` on every call, since all of them are structured extraction; `GEMINI_THINKING=auto` hands the choice back to the model |
 
 ```ts
 const res = await ai.models.generateContent({
@@ -188,6 +188,6 @@ Metrics printed: quote verification rate, category recall, rule recall, refusal 
 - Fixtures refer to clauses by their printed **label** (`"clauseLabels": ["5.1"]`), not generated ids, so an expectation survives a change to segmentation. The full schema is in `tests/golden.ts`. It adds `mustNotFlagRules`, `mustReportMissing` / `mustNotReportMissing`, `expectedDetails` (e.g. the bond amount) and, for the injection fixture, `forbiddenClauseIds` / `forbiddenVerifiedQuotes`.
 - The deterministic half (segmentation, rules, missing information) runs on every `npm test` via `tests/golden.test.ts`.
 - `npm run eval` sends each contract through `/api/session` → `/api/analyze` → `/api/ask` over HTTP. It also reports missing-information recall and answer-status accuracy, and lists every miss and false flag by name. It fails on verification < 95%, refusal accuracy < 100%, any injection violation or any failed request. `--mock` checks the harness without a key; `--only <name>` and `--pace <ms>` help stay inside free-tier quota.
-- Tokens are not reported: the API deliberately returns no usage metadata, and Google AI Studio shows usage per key (DECISIONS D33).
+- Tokens are not reported: the API deliberately returns no usage metadata, and Google AI Studio shows usage per key.
 
 Contracts must be **synthetic** (no real employer names or personal data) and small, to keep the repo well under 10 MB.

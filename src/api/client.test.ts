@@ -13,14 +13,17 @@ import {
   prepareResponseSchema,
   sessionResponseSchema,
 } from '@shared/schemas';
+import { LIMITS } from '@shared/limits';
 import {
   ApiError,
   analyzeDocument,
   askQuestion,
+  aiCallsRemaining,
   clearCachedResponses,
   compareDocuments,
   createSession,
   preparePack,
+  resetAiCallBudget,
   type RequestOptions,
 } from './client';
 
@@ -228,6 +231,7 @@ async function failure(promise: Promise<unknown>): Promise<ApiError> {
 
 beforeEach(() => {
   clearCachedResponses();
+  resetAiCallBudget();
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -401,6 +405,55 @@ describe('the response cache', () => {
     expect(fetchMock).toHaveBeenCalledTimes(9);
     await askQuestion(TOKEN, question(0));
     expect(fetchMock).toHaveBeenCalledTimes(10);
+  });
+});
+
+describe('the per-visit AI call budget', () => {
+  const question = (index: number) => ({ ...ASK_INPUT, question: `Question ${String(index)}?` });
+
+  async function spendWholeBudget(): Promise<void> {
+    fetchMock.mockImplementation(() => Promise.resolve(json(ASK)));
+    for (let index = 0; index < LIMITS.aiCallsPerVisit; index += 1) {
+      await askQuestion(TOKEN, question(index));
+    }
+  }
+
+  it('counts down with every model call the visit sends', async () => {
+    fetchMock.mockResolvedValue(json(ANALYSIS));
+    expect(aiCallsRemaining()).toBe(LIMITS.aiCallsPerVisit);
+
+    await analyzeDocument(TOKEN, ANALYZE_INPUT);
+    expect(aiCallsRemaining()).toBe(LIMITS.aiCallsPerVisit - 1);
+  });
+
+  it('stops before sending once the budget is spent, with an error retrying cannot fix', async () => {
+    await spendWholeBudget();
+    expect(fetchMock).toHaveBeenCalledTimes(LIMITS.aiCallsPerVisit);
+
+    const error = await failure(askQuestion(TOKEN, question(LIMITS.aiCallsPerVisit)));
+    expect(error.code).toBe('BUDGET_EXHAUSTED');
+    expect(error.retryable).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(LIMITS.aiCallsPerVisit);
+    expect(aiCallsRemaining()).toBe(0);
+  });
+
+  it('still answers from the cache once the budget is spent, because a cached answer is free', async () => {
+    await spendWholeBudget();
+    expect(await askQuestion(TOKEN, question(LIMITS.aiCallsPerVisit - 1))).toEqual(ASK);
+    expect(fetchMock).toHaveBeenCalledTimes(LIMITS.aiCallsPerVisit);
+  });
+
+  it('counts a failed call, since a loop of failures is what the budget is for', async () => {
+    fetchMock.mockResolvedValue(errorEnvelope('UPSTREAM_TIMEOUT', true, 504));
+    await failure(analyzeDocument(TOKEN, ANALYZE_INPUT));
+    expect(aiCallsRemaining()).toBe(LIMITS.aiCallsPerVisit - 1);
+  });
+
+  it('never counts a session request, which does not reach the model', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(SESSION)));
+    await createSession();
+    await createSession();
+    expect(aiCallsRemaining()).toBe(LIMITS.aiCallsPerVisit);
   });
 });
 

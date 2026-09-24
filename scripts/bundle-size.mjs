@@ -13,7 +13,7 @@ import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 
 const DIST = 'dist';
-const BUDGET_KB = 120;
+const BUDGET_KB = 100;
 
 /** Strings that only appear if the library itself was bundled in. */
 const LAZY_LIBRARY_MARKERS = [
@@ -21,6 +21,9 @@ const LAZY_LIBRARY_MARKERS = [
   { name: 'mammoth', marker: 'extractRawText' },
   // Response validation only runs after the first API call, so Zod is fetched with it.
   { name: 'Zod', marker: 'ZodError' },
+  // The Hindi dictionary loads when Hindi is chosen, the sample letter when it is asked for.
+  { name: 'the Hindi dictionary', marker: 'यह नहीं हो पाया' },
+  { name: 'the sample letter', marker: 'Head of People Operations' },
 ];
 
 function gzipKb(path) {
@@ -93,6 +96,22 @@ if (fullWorker.length > 0) {
   );
   process.exit(1);
 }
+
+// The service worker downloads its precache on a first visit, in the background. The parsers
+// must not be in it: they would triple that download for readers who never upload a file.
+const serviceWorker = readFileSync(join(DIST, 'sw.js'), 'utf8');
+const precached = [...serviceWorker.matchAll(/url:"([^"]+)"/g)].map((m) => m[1]);
+const precachedParsers = precached.filter((url) => /pdfjs-|pdf\.worker|mammoth-/.test(url));
+if (precached.length === 0 || precachedParsers.length > 0) {
+  console.error(
+    precached.length === 0
+      ? '\nFAIL: dist/sw.js lists no precache entries.'
+      : `\nFAIL: the service worker precaches ${precachedParsers.join(', ')}. Parsers are cached on first use.`,
+  );
+  process.exit(1);
+}
+const precacheKb = [...new Set(precached)].reduce((sum, url) => sum + gzipKb(join(DIST, url)), 0);
+console.log(`Service worker precache (gzip): ${fmt(precacheKb)} in ${precached.length} files`);
 
 const distBytes = (function walk(dir) {
   let sum = 0;

@@ -68,6 +68,7 @@ blocked. API responses also set `Cache-Control: no-store`.
 - Purpose limitation: text is used only to produce the requested analysis.
 - Data minimisation: raw file never uploaded; optional redaction.
 - No storage: no database, no document logs; KV holds only hashed-IP counters with TTL. The one thing held at all is a response cache in the Worker isolate's memory: validated model output for up to 10 minutes, keyed by a SHA-256 of the request, never written to KV or disk. An entry can only be reached by sending the identical document text, so it gives nothing to anyone who does not already have the document.
+- Service worker: it caches the app's own code (the shell, and the PDF and Word readers once used) and nothing else. API requests are POSTs, which it never caches, and `/api/` is excluded from its navigation fallback; `e2e/offline.spec.ts` checks the cache holds no `/api/` entry.
 - Transparency: a plain-language Privacy page explaining exactly what is sent to Google's Gemini API. Note that free-tier Gemini API usage may be used by Google to improve products; production should use a paid tier.
 - User control: "Clear everything" button wipes in-memory state.
 

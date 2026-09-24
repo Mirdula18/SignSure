@@ -42,53 +42,64 @@ export interface QuoteMatch {
   score: number;
 }
 
+/** The most edits a window of `windowSize` words may need and still score 0.9 against the quote. */
+function editBudget(windowSize: number, quoteSize: number): number {
+  return Math.ceil(Math.max(windowSize, quoteSize) * (1 - FUZZY_THRESHOLD));
+}
+
 /**
- * Levenshtein distance over token sequences, with early exit once the distance cannot beat
- * `maxDistance`. Comparing words rather than characters means a single substituted word costs
- * 1, which is what the 0.9 threshold is calibrated against.
+ * Word-level Levenshtein distance from every prefix of `window` to `quote`, in one table.
+ *
+ * Row i of the table compares the first i words of the window with the whole quote, so its last
+ * cell is the distance for a window of length i: one table answers every window size that starts
+ * at the same word, where computing each size separately repeated the shared rows five times.
+ * Comparing words rather than characters means a substituted word costs 1, which is what the
+ * 0.9 threshold is calibrated against.
+ *
+ * Distances above `maxDistance` are reported as `maxDistance + 1`: any such window fails anyway.
  */
-function tokenDistance(a: readonly string[], b: readonly string[], maxDistance: number): number {
+function prefixDistances(
+  window: readonly string[],
+  quote: readonly string[],
+  maxDistance: number,
+): number[] {
+  const tooFar = maxDistance + 1;
+  const distances = [Math.min(quote.length, tooFar)];
   // Any cell more than `maxDistance` off the diagonal already costs more than the budget, so
   // only a band that wide is computed; everything outside it stays at the "too far" value.
-  const tooFar = maxDistance + 1;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => Math.min(index, tooFar));
-  let current = new Array<number>(b.length + 1).fill(tooFar);
+  let previous = Array.from({ length: quote.length + 1 }, (_, index) => Math.min(index, tooFar));
+  let current = new Array<number>(quote.length + 1).fill(tooFar);
 
-  for (const [aIndex, aToken] of a.entries()) {
-    const row = aIndex + 1;
+  for (const [windowIndex, windowToken] of window.entries()) {
+    const row = windowIndex + 1;
     const from = Math.max(1, row - maxDistance);
-    const to = Math.min(b.length, row + maxDistance);
+    const to = Math.min(quote.length, row + maxDistance);
     current.fill(tooFar);
     current[0] = Math.min(row, tooFar);
     let rowMin = current[0];
     for (let column = from; column <= to; column += 1) {
-      const bIndex = column - 1;
-      const bToken = required(b, bIndex);
-      const cost = aToken === bToken ? 0 : 1;
+      const cost = windowToken === required(quote, column - 1) ? 0 : 1;
       const value = Math.min(
         required(previous, column) + 1,
-        required(current, bIndex) + 1,
-        required(previous, bIndex) + cost,
+        required(current, column - 1) + 1,
+        required(previous, column - 1) + cost,
         tooFar,
       );
       current[column] = value;
       if (value < rowMin) rowMin = value;
     }
-    // Every remaining row can only increase the distance, so bail out as soon as the whole row
-    // is already worse than the caller's budget.
-    if (rowMin > maxDistance) return tooFar;
+    // No later row can have a smaller cell, so once a whole row is past the budget every longer
+    // prefix is too, and the rest of the table need not be computed.
+    if (rowMin > maxDistance) {
+      while (distances.length <= window.length) distances.push(tooFar);
+      return distances;
+    }
+    distances.push(required(current, quote.length));
     const swap = previous;
     previous = current;
     current = swap;
   }
-  return required(previous, b.length);
-}
-
-/** Both sequences are non-empty: callers reject empty quotes and use windows of at least one. */
-function similarity(a: readonly string[], b: readonly string[]): number {
-  const longest = Math.max(a.length, b.length);
-  const maxDistance = Math.ceil(longest * (1 - FUZZY_THRESHOLD));
-  return 1 - tokenDistance(a, b, maxDistance) / longest;
+  return distances;
 }
 
 /**
@@ -96,13 +107,12 @@ function similarity(a: readonly string[], b: readonly string[]): number {
  *
  * Every edit script leaves at most `shared` tokens untouched (the words the two sequences have
  * in common, counted with multiplicity), so the distance is at least `longest - shared`. When
- * that floor is already past the budget `similarity` would allow, the window cannot score 0.9
- * and the O(n*m) table is skipped. It only ever rules out windows that would fail anyway, so
- * results are identical: on a 4,000-character clause this turns most of the search into a count.
+ * that floor is already past the edit budget, the window cannot score 0.9 and the O(n*m) table
+ * is skipped. It only ever rules out windows that would fail anyway, so results are identical:
+ * on a 4,000-character clause this turns most of the search into a count.
  */
 function couldReachThreshold(windowSize: number, quoteSize: number, shared: number): boolean {
-  const longest = Math.max(windowSize, quoteSize);
-  return longest - shared <= Math.ceil(longest * (1 - FUZZY_THRESHOLD));
+  return Math.max(windowSize, quoteSize) - shared <= editBudget(windowSize, quoteSize);
 }
 
 /**
@@ -143,6 +153,22 @@ function bestFuzzyWindow(
 
   const needleCounts = new Map<string, number>();
   for (const value of needleValues) needleCounts.set(value, (needleCounts.get(value) ?? 0) + 1);
+  // One band wide enough for the longest window serves every shorter one as well.
+  const tableBudget = editBudget(maxSize, target);
+
+  // No window can share more words with the quote than the whole clause does. When even that is
+  // too few, nothing here can score 0.9 - typically a quote the model made up - and one count
+  // over the clause settles it instead of a search over every window.
+  const clauseLeft = new Map(needleCounts);
+  let clauseShared = 0;
+  for (const value of haystackValues) {
+    const left = clauseLeft.get(value) ?? 0;
+    if (left > 0) {
+      clauseLeft.set(value, left - 1);
+      clauseShared += 1;
+    }
+  }
+  if (target - clauseShared > tableBudget) return null;
 
   let best: FuzzyWindow | null = null;
 
@@ -163,11 +189,18 @@ function bestFuzzyWindow(
     // Iterating candidate *last* tokens keeps every lookup in range by construction, so the
     // inner loop needs no bounds guards.
     const lastCandidates = haystackTokens.slice(start + minSize - 1, start + maxSize);
+    const hopeful: { size: number; lastToken: Token }[] = [];
     for (const [offset, lastToken] of lastCandidates.entries()) {
       const size = minSize + offset;
       take(lastToken.value);
-      if (!couldReachThreshold(size, target, shared)) continue;
-      const score = similarity(haystackValues.slice(start, start + size), needleValues);
+      if (couldReachThreshold(size, target, shared)) hopeful.push({ size, lastToken });
+    }
+    if (hopeful.length === 0) continue;
+
+    const longestWindow = haystackValues.slice(start, start + minSize + lastCandidates.length - 1);
+    const distances = prefixDistances(longestWindow, needleValues, tableBudget);
+    for (const { size, lastToken } of hopeful) {
+      const score = 1 - required(distances, size) / Math.max(size, target);
       if (score < FUZZY_THRESHOLD) continue;
 
       const lengthGap = Math.abs(size - target);

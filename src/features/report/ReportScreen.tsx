@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { ApiErrorCode, Clause } from '@shared/types';
+import type { Clause } from '@shared/types';
 import { isPresentable } from '@shared/verify';
 import { Button } from '@/components/Button';
 import { Tabs, type TabDefinition } from '@/components/Tabs';
@@ -14,6 +14,7 @@ import {
   compareDocuments,
   preparePack,
   ApiError,
+  type ClientErrorCode,
 } from '@/api/client';
 import type { TranslationKey } from '@/i18n';
 import { ClauseList } from './ClauseList';
@@ -121,7 +122,7 @@ export function ReportScreen() {
    * first, so the reader is asked to try again rather than to reload and lose the document.
    */
   const failureCode = useCallback(
-    (error: unknown): ApiErrorCode => {
+    (error: unknown): ClientErrorCode => {
       const code = error instanceof ApiError ? error.code : 'INTERNAL';
       if (code === 'UNAUTHORIZED') dispatch({ type: 'sessionExpired' });
       return code;

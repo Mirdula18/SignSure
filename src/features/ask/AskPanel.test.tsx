@@ -146,6 +146,12 @@ describe('AskPanel', () => {
     expect(alerts[1]).toHaveTextContent(/something went wrong/i);
   });
 
+  it('explains a spent AI budget, and that the answers already given still work', () => {
+    renderPanel([entry({ id: 'a', status: 'error', result: null, errorCode: 'BUDGET_EXHAUSTED' })]);
+    expect(screen.getByRole('alert')).toHaveTextContent(/used all of its ai requests/i);
+    expect(screen.getByRole('alert')).toHaveTextContent(/reload the page/i);
+  });
+
   it('has no axe violations with an answer on screen', async () => {
     const { container } = (() => {
       const result = renderWithProviders(

@@ -29,6 +29,13 @@ export const LIMITS = {
   clauseBatchSize: 80,
   /** Workers' subrequest budget means we never fan out wider than this. */
   maxParallelBatches: 4,
+  /**
+   * Model calls one visit may make, counted in the browser. A careful read of one letter is an
+   * analysis, a dozen questions, a comparison and a checklist - about fifteen - and cached
+   * answers are free. The cap is for the other case: a loop or a stuck button that would
+   * otherwise keep spending quota until the server's hourly limit stopped it.
+   */
+  aiCallsPerVisit: 30,
   /** A PDF with fewer characters per page than this is treated as scanned images. */
   minCharsPerPageForText: 100,
 } as const;

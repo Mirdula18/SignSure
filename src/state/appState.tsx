@@ -9,10 +9,9 @@ import {
   type ReactNode,
 } from 'react';
 import type { Lens } from '@shared/lenses';
-import { clearCachedResponses } from '@/api/client';
+import { clearCachedResponses, type ClientErrorCode } from '@/api/client';
 import type {
   AnalysisResult,
-  ApiErrorCode,
   AskResult,
   CompareResult,
   ParsedDocument,
@@ -36,7 +35,7 @@ export interface QaEntry {
   question: string;
   result: AskResult | null;
   status: AsyncStatus;
-  errorCode?: ApiErrorCode;
+  errorCode?: ClientErrorCode;
 }
 
 export interface AppState {
@@ -55,18 +54,18 @@ export interface AppState {
 
   analysis: AnalysisResult | null;
   analysisStatus: AsyncStatus;
-  analysisError?: ApiErrorCode;
+  analysisError?: ClientErrorCode;
 
   qa: QaEntry[];
 
   compareDocument: ParsedDocument | null;
   compare: CompareResult | null;
   compareStatus: AsyncStatus;
-  compareError?: ApiErrorCode;
+  compareError?: ClientErrorCode;
 
   prepare: PrepareResult | null;
   prepareStatus: AsyncStatus;
-  prepareError?: ApiErrorCode;
+  prepareError?: ClientErrorCode;
 
   /** Clause the user asked to inspect, e.g. by following a citation. */
   focusedClauseId: string | null;
@@ -97,17 +96,17 @@ export type AppAction =
   | { type: 'lensesChosen'; lenses: Lens[] }
   | { type: 'analysisStarted' }
   | { type: 'analysisReady'; analysis: AnalysisResult }
-  | { type: 'analysisFailed'; code: ApiErrorCode }
+  | { type: 'analysisFailed'; code: ClientErrorCode }
   | { type: 'questionAsked'; id: string; question: string }
   | { type: 'answerReady'; id: string; result: AskResult }
-  | { type: 'answerFailed'; id: string; code: ApiErrorCode }
+  | { type: 'answerFailed'; id: string; code: ClientErrorCode }
   | { type: 'compareDocumentParsed'; document: ParsedDocument }
   | { type: 'compareStarted' }
   | { type: 'compareReady'; compare: CompareResult }
-  | { type: 'compareFailed'; code: ApiErrorCode }
+  | { type: 'compareFailed'; code: ClientErrorCode }
   | { type: 'prepareStarted' }
   | { type: 'prepareReady'; prepare: PrepareResult }
-  | { type: 'prepareFailed'; code: ApiErrorCode }
+  | { type: 'prepareFailed'; code: ClientErrorCode }
   | { type: 'clauseFocused'; clauseId: string | null }
   | { type: 'clearEverything' };
 

@@ -4,11 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   LANGUAGES,
+  isLanguageLoaded,
+  loadLanguage,
   translate,
   type Language,
   type TranslationKey,
@@ -66,8 +69,20 @@ function persist(prefs: Preferences): void {
   }
 }
 
+/**
+ * Saved preferences, except a language whose dictionary has not arrived yet: that one starts in
+ * English and is switched to as soon as it loads, so the page never mixes two languages and
+ * `lang` always matches the text on screen.
+ */
+function initialPreferences(): { prefs: Preferences; pending: Language | null } {
+  const stored = readStored();
+  if (isLanguageLoaded(stored.language)) return { prefs: stored, pending: null };
+  return { prefs: { ...stored, language: 'en' }, pending: stored.language };
+}
+
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [prefs, setPrefs] = useState<Preferences>(readStored);
+  const [initial] = useState(initialPreferences);
+  const [prefs, setPrefs] = useState<Preferences>(initial.prefs);
 
   // The page language follows the interface, so a screen reader switches to a Hindi voice
   // instead of reading Devanagari with English pronunciation (WCAG 3.1.1).
@@ -75,13 +90,48 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = prefs.language;
   }, [prefs.language]);
 
-  const setLanguage = useCallback((language: Language) => {
+  const applyLanguage = useCallback((language: Language) => {
     setPrefs((current) => {
       const next = { ...current, language };
       persist(next);
       return next;
     });
   }, []);
+
+  // The language asked for last, so a slow load cannot override a later choice.
+  const requested = useRef<Language>(initial.prefs.language);
+
+  /**
+   * Loads `language` and switches to it, unless the reader has chosen something else meanwhile.
+   * If it cannot load - offline, before the service worker has it - the interface stays as is.
+   */
+  const loadThenApply = useCallback(
+    (language: Language) => {
+      loadLanguage(language).then(
+        () => {
+          if (requested.current === language) applyLanguage(language);
+        },
+        () => undefined,
+      );
+    },
+    [applyLanguage],
+  );
+
+  /** Switches at once when the dictionary is on hand, otherwise once it has loaded. */
+  const setLanguage = useCallback(
+    (language: Language) => {
+      requested.current = language;
+      if (isLanguageLoaded(language)) applyLanguage(language);
+      else loadThenApply(language);
+    },
+    [applyLanguage, loadThenApply],
+  );
+
+  useEffect(() => {
+    if (initial.pending === null) return;
+    requested.current = initial.pending;
+    loadThenApply(initial.pending);
+  }, [initial.pending, loadThenApply]);
 
   const setReadingLevel = useCallback((readingLevel: ReadingLevel) => {
     setPrefs((current) => {

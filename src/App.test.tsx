@@ -88,7 +88,7 @@ describe('App stages', () => {
     await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
 
     expect(
-      screen.getByRole('heading', { level: 1, name: /what are you most worried about/i }),
+      await screen.findByRole('heading', { level: 1, name: /what are you most worried about/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/We found \d+ clauses\./)).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);

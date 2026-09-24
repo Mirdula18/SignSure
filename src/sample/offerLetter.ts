@@ -159,6 +159,3 @@ I have read, understood and accept the terms of this appointment.
 
 Name: ______________________    Signature: ______________________    Date: ____________
 `;
-
-/** Shown in the UI so it is unmistakably a made-up document, not anyone's real offer. */
-export const SAMPLE_LABEL = 'Sample offer letter (synthetic - not a real company or person)';

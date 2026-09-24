@@ -134,6 +134,17 @@
   max-width: 70ch;
 }
 
+/*
+ * For long lists: the browser skips layout and paint for items off screen until they scroll
+ * near, so a 400-clause letter costs about as much to show as the few clauses in view. The
+ * items stay in the accessibility tree and in find-in-page. `auto` remembers each item's real
+ * height once seen, so the scrollbar settles instead of jumping.
+ */
+@utility render-when-visible {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 14rem;
+}
+
 /* Minimum target size (WCAG 2.2 AA is 24px; we aim for the 44px AAA-level target). */
 @utility tap-target {
   min-height: 2.75rem;
@@ -148,5 +159,10 @@
   body {
     background: #fff;
     color: #000;
+  }
+
+  /* A printout is every clause at once, so nothing may be left unrendered. */
+  .render-when-visible {
+    content-visibility: visible;
   }
 }

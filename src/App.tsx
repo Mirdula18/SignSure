@@ -9,7 +9,7 @@ import { focusHeadingWhenReady } from '@/components/focusHeading';
 import { LensPicker } from '@/features/lenses/LensPicker';
 import { SessionGate } from '@/features/session/SessionGate';
 import { UploadScreen } from '@/features/upload/UploadScreen';
-import { LazyReportScreen, loadReportScreen } from '@/lazyScreens';
+import { LazyReportScreen, prefetchWhenIdle } from '@/lazyScreens';
 import { useAppState } from '@/state/appState';
 import { useT } from '@/state/preferences';
 
@@ -30,10 +30,8 @@ export default function App() {
     [dispatch],
   );
 
-  // Fetch the report's code while the reader is choosing concerns, not after they press Analyse.
-  useEffect(() => {
-    if (state.stage === 'lenses') void loadReportScreen();
-  }, [state.stage]);
+  // Fetch the report's code in idle time, so it is there before Analyse is pressed.
+  useEffect(prefetchWhenIdle, []);
 
   // The button that moves to a new screen is gone once it has, so focus goes to the new
   // screen's heading instead of falling back to the page body. Not on first load: the skip link

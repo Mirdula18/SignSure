@@ -9,6 +9,7 @@ import type {
   CompareResult,
   PrepareResult,
 } from '@shared/types';
+import { LIMITS } from '@shared/limits';
 import type { Lens } from '@shared/lenses';
 import type { Language } from '@/i18n';
 import type { ReadingLevel } from '@/state/preferences';
@@ -41,9 +42,15 @@ function loadSchemas(): Promise<Schemas> {
   });
 }
 
+/**
+ * Every code the server can send, plus the ones only the browser raises: `BUDGET_EXHAUSTED`
+ * means this visit has used its model calls (`LIMITS.aiCallsPerVisit`) and no request was sent.
+ */
+export type ClientErrorCode = ApiErrorCode | 'BUDGET_EXHAUSTED';
+
 export class ApiError extends Error {
   constructor(
-    readonly code: ApiErrorCode,
+    readonly code: ClientErrorCode,
     readonly retryable: boolean,
     /** Seconds to wait, when the server sent Retry-After. */
     readonly retryAfterSeconds?: number,
@@ -73,6 +80,22 @@ export function clearCachedResponses(): void {
   responseCache.clear();
 }
 
+/**
+ * Model calls this visit has sent. Only real requests count - a cached answer costs nothing -
+ * and a failed one counts too, because a loop of failing requests is what the cap is for.
+ */
+let aiCallsSent = 0;
+
+/** Model calls this visit may still make before the budget stops it. */
+export function aiCallsRemaining(): number {
+  return Math.max(0, LIMITS.aiCallsPerVisit - aiCallsSent);
+}
+
+/** Test hook: start a fresh visit. */
+export function resetAiCallBudget(): void {
+  aiCallsSent = 0;
+}
+
 /** Same request, same answer: POSTs through the cache. The session route never comes here. */
 async function cachedPost<S extends z.ZodType>(
   path: string,
@@ -91,6 +114,8 @@ async function cachedPost<S extends z.ZodType>(
     return hit as z.infer<S>;
   }
 
+  if (aiCallsRemaining() === 0) throw new ApiError('BUDGET_EXHAUSTED', false);
+  aiCallsSent += 1;
   const data = await post(path, body, pick, token, options);
   responseCache.set(key, data);
   for (const oldest of responseCache.keys()) {

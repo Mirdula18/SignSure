@@ -218,10 +218,11 @@ Gemini wrapper: 25 s timeout via `AbortController`; one retry on 429/5xx with ji
 ## 10. Performance budgets
 | Budget | Target |
 |---|---|
-| Initial JS (gzip) | < 120 KB (pdf.js, mammoth, Zod and the report lazy-loaded; measured 91.5 KB) |
+| Initial JS (gzip) | < 100 KB (pdf.js, mammoth, Zod, the report, the text parser, the sample letter and the Hindi dictionary lazy-loaded; measured 80.3 KB) |
+| Offline precache (gzip) | App shell only, measured 141.8 KB; pdf.js and mammoth cached on first use (`vite.config.ts`) |
 | LCP (4G mobile) | < 2.5 s |
 | Analyze 5-page doc | < 15 s p50 |
-| Functions CPU per request | well under 10 ms free-tier cap: no parsing server-side, only validation, string matching, rules |
+| Functions CPU per request | No parsing server-side, only validation, rules and quote checks. An exact quote is one string search; a quote that needs the fuzzy fallback is bounded, measured at 1.7 ms (no match) to about 15 ms (near match) in the worst case of a 400-character quote in a 4,000-character clause. The free tier caps CPU at 10 ms, so a letter with several heavily paraphrased quotes can still need the paid tier |
 | Payload | ≤ 120k chars of clause text per request |
 
 Token efficiency: send text not PDF bytes; one batched classification call; `temperature: 0.2`; bounded `maxOutputTokens`; thinking budget low for classification; context caching (stretch) for multi-question sessions.

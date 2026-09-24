@@ -176,8 +176,14 @@ export interface AskPromptInput {
  * The question is fenced exactly like the document, for the same reason: it is typed by a person
  * we do not control, and it must be treated as data.
  */
+/**
+ * The document comes first and stays byte-for-byte the same across a reader's questions; only
+ * what follows it changes. Gemini caches a repeated prompt prefix on its own (implicit context
+ * caching), so every follow-up re-reads the document from that cache - cheaper and faster -
+ * instead of paying for it again. History placed first would change the prefix on every turn.
+ */
 export function askUserPrompt({ clauses, question, history }: AskPromptInput): string {
-  const parts: string[] = [];
+  const parts: string[] = [documentBlock(clauses)];
 
   if (history && history.length > 0) {
     const turns = history
@@ -186,7 +192,6 @@ export function askUserPrompt({ clauses, question, history }: AskPromptInput): s
     parts.push(`<previous_turns>\n${turns}\n</previous_turns>`);
   }
 
-  parts.push(documentBlock(clauses));
   parts.push(`<question>\n${sanitiseForPrompt(question)}\n</question>`);
   return parts.join('\n\n');
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, analyzeDocument, clearCachedResponses } from './client';
+import { ApiError, analyzeDocument, clearCachedResponses, resetAiCallBudget } from './client';
 
 /**
  * The schemas arrive in their own chunk on the first API call. This file makes that chunk fail
@@ -30,6 +30,7 @@ const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   clearCachedResponses();
+  resetAiCallBudget();
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });

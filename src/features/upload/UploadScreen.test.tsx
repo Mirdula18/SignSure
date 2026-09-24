@@ -27,7 +27,10 @@ describe('UploadScreen', () => {
       </>,
     );
     await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
-    expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|sample');
+    // The sample and the parser load on first use, so the move is one fetch away.
+    await waitFor(() => {
+      expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|sample');
+    });
   });
 
   it('loads no third-party script, so reading the home page contacts nobody', () => {
@@ -60,7 +63,9 @@ describe('UploadScreen', () => {
       '1. The Employee shall give ninety days notice of resignation to the Company.',
     );
     await user.click(pasteButton);
-    expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|paste');
+    await waitFor(() => {
+      expect(screen.getByLabelText('state')).toHaveTextContent('lenses|pending|paste');
+    });
   });
 
   it('marks which input mode is active for assistive technology', async () => {
@@ -193,5 +198,29 @@ describe('Dropzone', () => {
     renderWithPreferences(<Dropzone onFile={vi.fn()} />);
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /choose a file/i }));
+  });
+});
+
+describe('UploadScreen when the parser cannot be fetched', () => {
+  it('says the document could not be read and stays on this screen', async () => {
+    // What a reader sees offline before the parser has ever been cached.
+    vi.doMock('@/features/parsing/parseDocument', () => {
+      throw new TypeError('Failed to fetch dynamically imported module');
+    });
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <>
+          <UploadScreen />
+          <StateProbe />
+        </>,
+      );
+      await user.click(screen.getByRole('button', { name: /try with a sample offer letter/i }));
+
+      expect(await screen.findByText(/something went wrong reading that document/i)).toBeVisible();
+      expect(screen.getByLabelText('state')).toHaveTextContent(/^upload/);
+    } finally {
+      vi.doUnmock('@/features/parsing/parseDocument');
+    }
   });
 });

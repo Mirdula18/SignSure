@@ -165,7 +165,7 @@ export function ClauseList({ analysis, clauses, focusedClauseId }: ClauseListPro
               // Following a citation calls focus() on it; on an element that cannot take focus
               // that call is a silent no-op and a keyboard user is left wherever they were.
               tabIndex={-1}
-              className="flex scroll-mt-28 flex-col gap-3 rounded-xl"
+              className="render-when-visible flex scroll-mt-28 flex-col gap-3 rounded-xl"
             >
               {findings.length === 0 ? (
                 <PlainClauseCard clause={clause} />

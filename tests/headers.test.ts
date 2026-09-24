@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 /**
  * Pins the security headers Cloudflare Pages serves from `public/_headers`.
  *
- * The preview server used by the E2E suite does not read this file, so without this test a
- * loosened CSP would only be noticed on the deployed site, if at all. docs/SECURITY.md section 4
- * still asks for a check of the live headers before each submission.
+ * `vite preview` serves the same `/*` block (vite.config.ts), so the E2E suite runs under this
+ * CSP too; this test pins its exact values. docs/SECURITY.md section 4 still asks for a check of
+ * the live headers before each submission.
  */
 
 const ROOT = join(import.meta.dirname, '..');
@@ -84,6 +84,12 @@ describe('public/_headers', () => {
 
   it('never lets an API response be cached', () => {
     expect(RULES.get('/api/*')?.get('cache-control')).toBe('no-store');
+  });
+
+  it('revalidates the service worker and its loader on every visit, so an update is never missed', () => {
+    for (const path of ['/sw.js', '/registerSW.js', '/manifest.webmanifest']) {
+      expect(RULES.get(path)?.get('cache-control')).toBe('no-cache');
+    }
   });
 });
 

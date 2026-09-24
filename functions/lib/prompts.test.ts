@@ -281,7 +281,7 @@ describe('askUserPrompt', () => {
     );
   });
 
-  it('replays earlier turns first, as Q and A pairs, when there is history', () => {
+  it('replays earlier turns as Q and A pairs, between the document and the question', () => {
     const prompt = askUserPrompt({
       clauses: [NOTICE],
       question: 'And during probation?',
@@ -290,11 +290,23 @@ describe('askUserPrompt', () => {
         { question: 'Can I buy it out?', answer: 'The document does not say.' },
       ],
     });
-    expect(prompt.startsWith('<previous_turns>\n')).toBe(true);
+    expect(prompt.startsWith('<document>\n')).toBe(true);
     expect(prompt).toContain(
       'Q: What is my notice period?\nA: Thirty days.\n\nQ: Can I buy it out?\nA: The document does not say.',
     );
-    expect(prompt.indexOf('</previous_turns>')).toBeLessThan(prompt.indexOf('<document>'));
+    expect(prompt.indexOf('</document>')).toBeLessThan(prompt.indexOf('<previous_turns>'));
+    expect(prompt.indexOf('</previous_turns>')).toBeLessThan(prompt.indexOf('<question>'));
+  });
+
+  it('starts every question about a document with the same text, so Gemini can cache it', () => {
+    const first = askUserPrompt({ clauses: [NOTICE], question: 'What is my notice period?' });
+    const later = askUserPrompt({
+      clauses: [NOTICE],
+      question: 'And during probation?',
+      history: [{ question: 'What is my notice period?', answer: 'Thirty days.' }],
+    });
+    const documentPart = first.slice(0, first.indexOf('</document>') + '</document>'.length);
+    expect(later.startsWith(documentPart)).toBe(true);
   });
 
   it('sanitises the question, so a typed </document> cannot escape the fence', () => {

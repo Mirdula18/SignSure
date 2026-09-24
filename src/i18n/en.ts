@@ -295,6 +295,8 @@ export const en = {
     'Your session needed renewing, and SignSure is renewing it now. Please try again in a moment. Your document is still here.',
   'error.TOO_LARGE': 'That document is too large to analyse. Try a shorter one.',
   'error.RATE_LIMITED': 'You have made a lot of requests. Please wait a minute and try again.',
+  'error.BUDGET_EXHAUSTED':
+    'This visit has used all of its AI requests. Answers you already have still work. Reload the page to start a new visit.',
   'error.MODEL_BLOCKED':
     'The assistant could not process this document. If it contains unusual content, try the employment agreement on its own.',
   'error.MODEL_INVALID_OUTPUT': 'The assistant returned something unusable. Please try again.',

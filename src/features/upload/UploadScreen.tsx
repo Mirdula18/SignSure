@@ -2,8 +2,8 @@ import { useCallback, useId, useState } from 'react';
 import { LIMITS } from '@shared/limits';
 import { Button } from '@/components/Button';
 import { Dropzone } from './Dropzone';
-import { parseFile, parseText, type ParseFailureReason } from '@/features/parsing/parseDocument';
-import { SAMPLE_LABEL, SAMPLE_OFFER_LETTER } from '@/sample/offerLetter';
+import type { ParseFailureReason, ParseResult } from '@/features/parsing/parseDocument';
+import { SAMPLE_LABEL } from '@/sample/label';
 import { useAppState } from '@/state/appState';
 import { useT } from '@/state/preferences';
 import type { TranslationKey } from '@/i18n';
@@ -18,6 +18,14 @@ import type { TranslationKey } from '@/i18n';
  */
 
 type Mode = 'file' | 'paste';
+
+/**
+ * The parser (segmenter, file checks) and the sample letter load with the first document rather
+ * than with the page: this screen has to paint before anyone has chosen anything, and neither is
+ * needed until they have. Both are small, so the wait is a single short fetch.
+ */
+const loadParser = () => import('@/features/parsing/parseDocument');
+const loadSample = () => import('@/sample/offerLetter');
 
 interface ParseError {
   reason: ParseFailureReason;
@@ -40,7 +48,7 @@ export function UploadScreen() {
   const pasteId = useId();
 
   const accept = useCallback(
-    (result: ReturnType<typeof parseText>) => {
+    (result: ParseResult) => {
       if (result.ok) {
         setError(null);
         dispatch({ type: 'documentParsed', document: result.document });
@@ -55,11 +63,12 @@ export function UploadScreen() {
     [dispatch],
   );
 
-  const handleFile = useCallback(
-    (file: File) => {
+  /** Every way in - file, paste, sample - shares one busy state and one failure path. */
+  const run = useCallback(
+    (parse: () => Promise<ParseResult>) => {
       setBusy(true);
       setError(null);
-      parseFile(file)
+      parse()
         .then(accept)
         .catch(() => {
           setError({ reason: 'UNKNOWN' });
@@ -71,13 +80,26 @@ export function UploadScreen() {
     [accept],
   );
 
+  const handleFile = useCallback(
+    (file: File) => {
+      run(async () => (await loadParser()).parseFile(file));
+    },
+    [run],
+  );
+
   const handleSample = useCallback(() => {
-    accept(parseText(SAMPLE_OFFER_LETTER, 'sample'));
-  }, [accept]);
+    run(async () => {
+      const [{ parseText }, { SAMPLE_OFFER_LETTER }] = await Promise.all([
+        loadParser(),
+        loadSample(),
+      ]);
+      return parseText(SAMPLE_OFFER_LETTER, 'sample');
+    });
+  }, [run]);
 
   const handlePaste = useCallback(() => {
-    accept(parseText(pasted, 'paste'));
-  }, [accept, pasted]);
+    run(async () => (await loadParser()).parseText(pasted, 'paste'));
+  }, [run, pasted]);
 
   return (
     <section aria-labelledby="upload-heading" className="flex flex-col gap-6">
